@@ -1,0 +1,9 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------------< com.masai:E-Commerce-Backend >--------------------
+[INFO] Building E-Commerce-Backend 0.0.1-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot-maven-plugin:2.7.0:run (default-cli) > test-compile @ E-Commerce-Backend >>>
+[INFO] 
+[INFO] --- maven-resources-plugin:3.2.0:resources (default-resources) @ E-Commerce-Backend ---
