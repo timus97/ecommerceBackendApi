@@ -21,8 +21,10 @@ import com.masai.models.CustomerUpdateDTO;
 import com.masai.models.Order;
 import com.masai.models.SessionDTO;
 import com.masai.models.UserSession;
+import com.masai.models.Wishlist;
 import com.masai.repository.CustomerDao;
 import com.masai.repository.SessionDao;
+import com.masai.repository.WishlistDao;
 
 @Service
 public class CustomerServiceImpl implements CustomerService{
@@ -35,6 +37,9 @@ public class CustomerServiceImpl implements CustomerService{
 	
 	@Autowired
 	private SessionDao sessionDao;
+
+	@Autowired
+	private WishlistDao wishlistDao;
 	
 	
 	// Method to add a new customer
@@ -45,8 +50,11 @@ public class CustomerServiceImpl implements CustomerService{
 		customer.setCreatedOn(LocalDateTime.now());
 		
 		Cart c = new Cart();
-		
 		customer.setCustomerCart(c);
+
+		Wishlist wishlist = new Wishlist();
+		wishlist.setCustomer(customer);
+		customer.setCustomerWishlist(wishlist);
 		
 		customer.setOrders(new ArrayList<Order>());
 

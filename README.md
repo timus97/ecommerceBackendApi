@@ -49,7 +49,7 @@
 
 ## Installation & Run
 
-* Before running the API server, you should update the database config inside the [application.properties](E-Commerce-Backend/src/main/resources/application.properties) file (SQLite is now used by default for simplicity - no external DB server needed; it creates ecommercedb.db file automatically).
+* Before running the API server, you should update the database config inside the [application.properties](E-Commerce-Backend/src_old/main/resources/application.properties) file (SQLite is now used by default for simplicity - no external DB server needed; it creates ecommercedb.db file automatically).
 * Update the port number if needed. SQLite doesn't require username/password.
 
 ```

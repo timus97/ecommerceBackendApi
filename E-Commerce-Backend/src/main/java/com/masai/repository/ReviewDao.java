@@ -21,13 +21,17 @@ public interface ReviewDao extends JpaRepository<Review, Long> {
     boolean existsByCustomerAndProduct(Customer customer, Product product);
 
     // Find reviews for a product (excluding deleted), pageable
-    Page<Review> findByProductIdAndIsDeletedFalse(Integer productId, Pageable pageable);
+    // NOTE: Spring Data misparses "findByProductId" as product.id; use explicit JPQL instead.
+    @Query("SELECT r FROM Review r WHERE r.product.productId = :productId AND r.isDeleted = false")
+    Page<Review> findByProductIdAndIsDeletedFalse(@Param("productId") Integer productId, Pageable pageable);
 
     // Find approved reviews for a product, pageable
-    Page<Review> findByProductIdAndIsApprovedTrue(Integer productId, Pageable pageable);
+    @Query("SELECT r FROM Review r WHERE r.product.productId = :productId AND r.isApproved = true")
+    Page<Review> findByProductIdAndIsApprovedTrue(@Param("productId") Integer productId, Pageable pageable);
 
     // Count reviews for a product
-    long countByProductId(Integer productId);
+    @Query("SELECT COUNT(r) FROM Review r WHERE r.product.productId = :productId")
+    long countByProductId(@Param("productId") Integer productId);
 
     // Custom JPQL for average rating of approved/non-deleted reviews for a product
     @Query("SELECT AVG(r.rating) FROM Review r WHERE r.product.productId = :productId AND r.isDeleted = false AND r.isApproved = true")

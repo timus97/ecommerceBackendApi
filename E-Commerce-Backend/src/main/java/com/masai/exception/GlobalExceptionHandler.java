@@ -82,6 +82,12 @@ public class GlobalExceptionHandler {
 		ErrorDetails err = new ErrorDetails(LocalDateTime.now(), re.getMessage(), wr.getDescription(false));
 		return new ResponseEntity<>(err, HttpStatus.BAD_REQUEST);
 	}
+
+	@ExceptionHandler(WishlistException.class)
+	public ResponseEntity<ErrorDetails> wishlistExceptionHandler(WishlistException we, WebRequest wr){
+		ErrorDetails err = new ErrorDetails(LocalDateTime.now(), we.getMessage(), wr.getDescription(false));
+		return new ResponseEntity<>(err, HttpStatus.BAD_REQUEST);
+	}
 	// Custom Exception Handler Area Ends
 	
 	

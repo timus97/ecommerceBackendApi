@@ -89,6 +89,9 @@ public class Customer {
 	@OneToOne(cascade = CascadeType.ALL)
 	private Cart customerCart;
 
+	@OneToOne(cascade = CascadeType.ALL)
+	private Wishlist customerWishlist;
+
 	// Reviews written by this customer
 	@OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<Review> reviews = new ArrayList<>();
