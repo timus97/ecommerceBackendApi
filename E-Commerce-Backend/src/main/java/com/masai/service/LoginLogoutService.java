@@ -1,8 +1,8 @@
 package com.masai.service;
 
-import com.masai.models.CustomerDTO;
-import com.masai.models.SellerDTO;
-import com.masai.models.SessionDTO;
+import com.masai.dto.CustomerDTO;
+import com.masai.dto.SellerDTO;
+import com.masai.dto.SessionDTO;
 import com.masai.models.UserSession;
 
 

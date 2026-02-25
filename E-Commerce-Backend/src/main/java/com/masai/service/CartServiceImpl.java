@@ -11,7 +11,7 @@ import com.masai.exception.CartItemNotFound;
 import com.masai.exception.CustomerNotFoundException;
 import com.masai.exception.LoginException;
 import com.masai.models.Cart;
-import com.masai.models.CartDTO;
+import com.masai.dto.CartDTO;
 import com.masai.models.CartItem;
 import com.masai.models.Customer;
 import com.masai.models.UserSession;
@@ -19,6 +19,7 @@ import com.masai.repository.CartDao;
 import com.masai.repository.CustomerDao;
 import com.masai.repository.ProductDao;
 import com.masai.repository.SessionDao;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CartServiceImpl implements CartService {
@@ -44,6 +45,7 @@ public class CartServiceImpl implements CartService {
 	private ProductDao productDao;
 
 	@Override
+	@Transactional
 	public Cart addProductToCart(CartDTO cartDto, String token) {
 
 		
@@ -129,6 +131,7 @@ public class CartServiceImpl implements CartService {
 	
 	
 	@Override
+	@Transactional
 	public Cart removeProductFromCart(CartDTO cartDto, String token) {
 		if(token.contains("customer") == false) {
 			throw new LoginException("Invalid session token for customer");
@@ -185,6 +188,7 @@ public class CartServiceImpl implements CartService {
 	}
 	
 	@Override
+	@Transactional
 	public Cart clearCart(String token) {
 		
 		if(token.contains("customer") == false) {

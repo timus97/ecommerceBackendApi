@@ -2,7 +2,7 @@ package com.masai.service;
 
 import com.masai.exception.CartItemNotFound;
 import com.masai.models.Cart;
-import com.masai.models.CartDTO;
+import com.masai.dto.CartDTO;
 
 
 

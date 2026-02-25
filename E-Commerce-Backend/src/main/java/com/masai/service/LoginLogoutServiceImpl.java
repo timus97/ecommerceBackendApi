@@ -12,14 +12,15 @@ import com.masai.exception.CustomerNotFoundException;
 import com.masai.exception.LoginException;
 import com.masai.exception.SellerNotFoundException;
 import com.masai.models.Customer;
-import com.masai.models.CustomerDTO;
+import com.masai.dto.CustomerDTO;
 import com.masai.models.Seller;
-import com.masai.models.SellerDTO;
-import com.masai.models.SessionDTO;
+import com.masai.dto.SellerDTO;
+import com.masai.dto.SessionDTO;
 import com.masai.models.UserSession;
 import com.masai.repository.CustomerDao;
 import com.masai.repository.SellerDao;
 import com.masai.repository.SessionDao;
+import com.masai.util.PasswordEncoderUtil;
 
 @Service
 public class LoginLogoutServiceImpl implements LoginLogoutService{
@@ -33,6 +34,9 @@ public class LoginLogoutServiceImpl implements LoginLogoutService{
 	
 	@Autowired
 	private SellerDao sellerDao;
+	
+	@Autowired
+	private PasswordEncoderUtil passwordEncoderUtil;
 
  
 	
@@ -63,7 +67,7 @@ public class LoginLogoutServiceImpl implements LoginLogoutService{
 		}
 		
 		
-		if(existingCustomer.getPassword().equals(loginCustomer.getPassword())) {
+		if(passwordEncoderUtil.matchesPassword(loginCustomer.getPassword(), existingCustomer.getPassword())) {
 		
 			UserSession newSession = new UserSession();
 			
@@ -165,7 +169,7 @@ public class LoginLogoutServiceImpl implements LoginLogoutService{
 		}
 		
 		
-		if(existingSeller.getPassword().equals(seller.getPassword())) {
+		if(passwordEncoderUtil.matchesPassword(seller.getPassword(), existingSeller.getPassword())) {
 		
 			UserSession newSession = new UserSession();
 			

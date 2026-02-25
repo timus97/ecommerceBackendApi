@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.masai.models.Cart;
-import com.masai.models.WishlistResponseDTO;
+import com.masai.dto.WishlistResponseDTO;
 import com.masai.service.WishlistService;
 
 /**

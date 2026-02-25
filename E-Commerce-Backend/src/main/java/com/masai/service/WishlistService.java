@@ -3,7 +3,7 @@ package com.masai.service;
 import java.util.List;
 
 import com.masai.models.Cart;
-import com.masai.models.WishlistResponseDTO;
+import com.masai.dto.WishlistResponseDTO;
 
 /**
  * Service contract for all wishlist operations.

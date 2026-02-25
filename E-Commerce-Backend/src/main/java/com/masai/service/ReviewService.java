@@ -5,9 +5,9 @@ import org.springframework.data.domain.Pageable;
 
 import com.masai.exception.LoginException;
 import com.masai.exception.ReviewException;
-import com.masai.models.ReviewRequestDTO;
-import com.masai.models.ReviewResponseDTO;
-import com.masai.models.ReviewSummaryDTO;
+import com.masai.dto.ReviewRequestDTO;
+import com.masai.dto.ReviewResponseDTO;
+import com.masai.dto.ReviewSummaryDTO;
 
 /**
  * Service interface for Review operations.

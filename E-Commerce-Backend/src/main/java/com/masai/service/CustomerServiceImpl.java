@@ -16,15 +16,17 @@ import com.masai.models.Address;
 import com.masai.models.Cart;
 import com.masai.models.CreditCard;
 import com.masai.models.Customer;
-import com.masai.models.CustomerDTO;
-import com.masai.models.CustomerUpdateDTO;
+import com.masai.dto.CustomerDTO;
+import com.masai.dto.CustomerUpdateDTO;
 import com.masai.models.Order;
-import com.masai.models.SessionDTO;
+import com.masai.dto.SessionDTO;
 import com.masai.models.UserSession;
 import com.masai.models.Wishlist;
 import com.masai.repository.CustomerDao;
 import com.masai.repository.SessionDao;
 import com.masai.repository.WishlistDao;
+import com.masai.util.PasswordEncoderUtil;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CustomerServiceImpl implements CustomerService{
@@ -41,13 +43,21 @@ public class CustomerServiceImpl implements CustomerService{
 	@Autowired
 	private WishlistDao wishlistDao;
 	
+	@Autowired
+	private PasswordEncoderUtil passwordEncoderUtil;
+	
 	
 	// Method to add a new customer
 	
 	@Override
+	@Transactional
 	public Customer addCustomer(Customer customer) {
 				
 		customer.setCreatedOn(LocalDateTime.now());
+		
+		// Hash the password using bcrypt
+		String hashedPassword = passwordEncoderUtil.encodePassword(customer.getPassword());
+		customer.setPassword(hashedPassword);
 		
 		Cart c = new Cart();
 		customer.setCustomerCart(c);
@@ -121,6 +131,7 @@ public class CustomerServiceImpl implements CustomerService{
 	// Method to update entire customer details - either mobile number or email id should be correct
 	
 	@Override
+	@Transactional
 	public Customer updateCustomer(CustomerUpdateDTO customer, String token) throws CustomerNotFoundException {
 		
 		
@@ -165,7 +176,9 @@ public class CustomerServiceImpl implements CustomerService{
 			}
 			
 			if(customer.getPassword() != null) {
-				existingCustomer.setPassword(customer.getPassword());
+				// Hash the password using bcrypt
+			String hashedPassword = passwordEncoderUtil.encodePassword(customer.getPassword());
+			existingCustomer.setPassword(hashedPassword);
 			}
 			
 			if(customer.getAddress() != null) {			
@@ -189,6 +202,7 @@ public class CustomerServiceImpl implements CustomerService{
 	// Method to update customer mobile number - details updated for current logged in user
 
 	@Override
+	@Transactional
 	public Customer updateCustomerMobileNoOrEmailId(CustomerUpdateDTO customerUpdateDTO, String token) throws CustomerNotFoundException {
 		
 		if(token.contains("customer") == false) {
@@ -222,6 +236,7 @@ public class CustomerServiceImpl implements CustomerService{
 	// Method to update password - based on current token
 	
 	@Override
+	@Transactional
 	public SessionDTO updateCustomerPassword(CustomerDTO customerDTO, String token) {
 		
 		
@@ -246,7 +261,9 @@ public class CustomerServiceImpl implements CustomerService{
 			throw new CustomerException("Verification error. Mobile number does not match");
 		}
 		
-		existingCustomer.setPassword(customerDTO.getPassword());
+		// Hash the password using bcrypt
+	String hashedPassword = passwordEncoderUtil.encodePassword(customerDTO.getPassword());
+	existingCustomer.setPassword(hashedPassword);
 		
 		customerDao.save(existingCustomer);
 		
@@ -267,6 +284,7 @@ public class CustomerServiceImpl implements CustomerService{
 	
 	
 	@Override
+	@Transactional
 	public Customer updateAddress(Address address, String type, String token) throws CustomerException {
 		if(token.contains("customer") == false) {
 			throw new LoginException("Invalid session token for customer");
@@ -293,6 +311,7 @@ public class CustomerServiceImpl implements CustomerService{
 	// Method to update Credit card
 	
 	@Override
+	@Transactional
 	public Customer updateCreditCardDetails(String token, CreditCard card) throws CustomerException{
 		
 		if(token.contains("customer") == false) {
@@ -320,6 +339,7 @@ public class CustomerServiceImpl implements CustomerService{
 	// Method to delete a customer by mobile id
 	
 	@Override
+	@Transactional
 	public SessionDTO deleteCustomer(CustomerDTO customerDTO, String token) throws CustomerNotFoundException {
 		
 		if(token.contains("customer") == false) {
@@ -344,7 +364,7 @@ public class CustomerServiceImpl implements CustomerService{
 		session.setToken(token);
 		
 		if(existingCustomer.getMobileNo().equals(customerDTO.getMobileId()) 
-				&& existingCustomer.getPassword().equals(customerDTO.getPassword())) {
+				&& passwordEncoderUtil.matchesPassword(customerDTO.getPassword(), existingCustomer.getPassword())) {
 			
 			customerDao.delete(existingCustomer);
 			
@@ -363,6 +383,7 @@ public class CustomerServiceImpl implements CustomerService{
 
 
 	@Override
+	@Transactional
 	public Customer deleteAddress(String type, String token) throws CustomerException, CustomerNotFoundException {
 		
 		if(token.contains("customer") == false) {

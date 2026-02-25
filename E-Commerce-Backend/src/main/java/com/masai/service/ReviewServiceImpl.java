@@ -15,14 +15,15 @@ import com.masai.exception.ReviewException;
 import com.masai.models.Customer;
 import com.masai.models.Product;
 import com.masai.models.Review;
-import com.masai.models.ReviewRequestDTO;
-import com.masai.models.ReviewResponseDTO;
-import com.masai.models.ReviewSummaryDTO;
+import com.masai.dto.ReviewRequestDTO;
+import com.masai.dto.ReviewResponseDTO;
+import com.masai.dto.ReviewSummaryDTO;
 import com.masai.models.UserSession;
 import com.masai.repository.CustomerDao;
 import com.masai.repository.ProductDao;
 import com.masai.repository.ReviewDao;
 import com.masai.repository.SessionDao;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Full ReviewServiceImpl with all operations, validations, and exception handling.
@@ -47,6 +48,7 @@ public class ReviewServiceImpl implements ReviewService {
     private LoginLogoutService loginService;
 
     @Override
+    @Transactional
     public ReviewResponseDTO addReview(ReviewRequestDTO reviewRequest, String token) throws ReviewException, LoginException {
         // 1. Token validation (customer only)
         if (token == null || !token.contains("customer")) {
@@ -92,6 +94,7 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
+    @Transactional
     public ReviewResponseDTO updateReview(Long reviewId, ReviewRequestDTO reviewRequest, String token) 
             throws ReviewException, LoginException {
         // Token validation
@@ -126,6 +129,7 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
+    @Transactional
     public ReviewResponseDTO deleteReview(Long reviewId, String token) throws ReviewException, LoginException {
         // Token validation
         if (token == null || !token.contains("customer")) {
@@ -163,6 +167,7 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
+    @Transactional
     public ReviewResponseDTO approveReview(Long reviewId, String token) throws ReviewException, LoginException {
         // Token validation (assume seller/admin; simple check for now)
         if (token == null) {

@@ -11,11 +11,12 @@ import com.masai.exception.CategoryNotFoundException;
 import com.masai.exception.ProductNotFoundException;
 import com.masai.models.CategoryEnum;
 import com.masai.models.Product;
-import com.masai.models.ProductDTO;
+import com.masai.dto.ProductDTO;
 import com.masai.models.ProductStatus;
 import com.masai.models.Seller;
 import com.masai.repository.ProductDao;
 import com.masai.repository.SellerDao;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ProductServiceImpl implements ProductService {
@@ -30,6 +31,7 @@ public class ProductServiceImpl implements ProductService {
 	private SellerDao sDao;
 
 	@Override
+	@Transactional
 	public Product addProductToCatalog(String token, Product product) {
 
 		Product prod = null;
@@ -71,6 +73,7 @@ public class ProductServiceImpl implements ProductService {
 	}
 
 	@Override
+	@Transactional
 	public String deleteProductFromCatalog(Integer id) throws ProductNotFoundException {
 		Optional<Product> opt = prodDao.findById(id);
 		
@@ -84,6 +87,7 @@ public class ProductServiceImpl implements ProductService {
 	}
 
 	@Override
+	@Transactional
 	public Product updateProductIncatalog(Product prod) throws ProductNotFoundException {
 
 		Optional<Product> opt = prodDao.findById(prod.getProductId());
@@ -130,6 +134,7 @@ public class ProductServiceImpl implements ProductService {
 	}
 
 	@Override
+	@Transactional
 	public Product updateProductQuantityWithId(Integer id,ProductDTO prodDto) {
 		Product prod = null;
 		 Optional<Product> opt = prodDao.findById(id);

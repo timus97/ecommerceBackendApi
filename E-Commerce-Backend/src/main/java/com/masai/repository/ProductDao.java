@@ -9,7 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import com.masai.models.CategoryEnum;
 import com.masai.models.Product;
-import com.masai.models.ProductDTO;
+import com.masai.dto.ProductDTO;
 import com.masai.models.ProductStatus;
 
 
@@ -17,16 +17,16 @@ import com.masai.models.ProductStatus;
 public interface ProductDao extends JpaRepository<Product, Integer> {
 	
 	
-	@Query("select new com.masai.models.ProductDTO(p.productName,p.manufacturer,p.price,p.quantity) "
+	@Query("select new com.masai.dto.ProductDTO(p.productName,p.manufacturer,p.price,p.quantity) "
 			+ "from Product p where p.category=:catenum")
 	public List<ProductDTO> getAllProductsInACategory(@Param("catenum") CategoryEnum catenum);
 	
 	
-	@Query("select new com.masai.models.ProductDTO(p.productName,p.manufacturer,p.price,p.quantity) "
+	@Query("select new com.masai.dto.ProductDTO(p.productName,p.manufacturer,p.price,p.quantity) "
 			+ "from Product p where p.status=:status")
 	public List<ProductDTO> getProductsWithStatus(@Param("status") ProductStatus status);
 	
-	@Query("select new com.masai.models.ProductDTO(p.productName,p.manufacturer,p.price,p.quantity) "
+	@Query("select new com.masai.dto.ProductDTO(p.productName,p.manufacturer,p.price,p.quantity) "
 			+ "from Product p where p.seller.sellerId=:id")
 	public List<ProductDTO> getProductsOfASeller(@Param("id") Integer id);
 	

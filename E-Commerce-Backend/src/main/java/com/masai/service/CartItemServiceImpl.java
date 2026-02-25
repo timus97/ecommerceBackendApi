@@ -4,11 +4,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.masai.exception.ProductNotFoundException;
-import com.masai.models.CartDTO;
+import com.masai.dto.CartDTO;
 import com.masai.models.CartItem;
 import com.masai.models.Product;
 import com.masai.models.ProductStatus;
 import com.masai.repository.ProductDao;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CartItemServiceImpl implements CartItemService{
@@ -17,6 +18,7 @@ public class CartItemServiceImpl implements CartItemService{
 	ProductDao productDao;
 
 	@Override
+	@Transactional
 	public CartItem createItemforCart(CartDTO cartdto) {
 		
 		Product existingProduct = productDao.findById(cartdto.getProductId()).orElseThrow( () -> new ProductNotFoundException("Product Not found"));

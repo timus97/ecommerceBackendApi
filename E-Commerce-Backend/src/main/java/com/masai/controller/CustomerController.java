@@ -2,7 +2,7 @@ package com.masai.controller;
 
 import java.util.List;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -18,10 +18,10 @@ import org.springframework.web.bind.annotation.RestController;
 import com.masai.models.Address;
 import com.masai.models.CreditCard;
 import com.masai.models.Customer;
-import com.masai.models.CustomerDTO;
-import com.masai.models.CustomerUpdateDTO;
+import com.masai.dto.CustomerDTO;
+import com.masai.dto.CustomerUpdateDTO;
 import com.masai.models.Order;
-import com.masai.models.SessionDTO;
+import com.masai.dto.SessionDTO;
 import com.masai.service.CustomerService;
 
 @RestController

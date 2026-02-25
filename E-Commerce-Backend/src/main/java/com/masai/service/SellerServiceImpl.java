@@ -9,11 +9,13 @@ import org.springframework.stereotype.Service;
 import com.masai.exception.LoginException;
 import com.masai.exception.SellerException;
 import com.masai.models.Seller;
-import com.masai.models.SellerDTO;
-import com.masai.models.SessionDTO;
+import com.masai.dto.SellerDTO;
+import com.masai.dto.SessionDTO;
 import com.masai.models.UserSession;
 import com.masai.repository.SellerDao;
 import com.masai.repository.SessionDao;
+import com.masai.util.PasswordEncoderUtil;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SellerServiceImpl implements SellerService {
@@ -27,9 +29,16 @@ public class SellerServiceImpl implements SellerService {
 	@Autowired
 	private SessionDao sessionDao;
 	
+	@Autowired
+	private PasswordEncoderUtil passwordEncoderUtil;
+	
 
 	@Override
+	@Transactional
 	public Seller addSeller(Seller seller) {
+		// Hash the password using bcrypt
+		String hashedPassword = passwordEncoderUtil.encodePassword(seller.getPassword());
+		seller.setPassword(hashedPassword);
 		
 		Seller add= sellerDao.save(seller);
 		
@@ -60,6 +69,7 @@ public class SellerServiceImpl implements SellerService {
 	}
 
 	@Override
+	@Transactional
 	public Seller updateSeller(Seller seller, String token) {
 		
 		if(token.contains("seller") == false) {
@@ -74,6 +84,7 @@ public class SellerServiceImpl implements SellerService {
 	}
 
 	@Override
+	@Transactional
 	public Seller deleteSellerById(Integer sellerId, String token) {
 		
 		if(token.contains("seller") == false) {
@@ -109,6 +120,7 @@ public class SellerServiceImpl implements SellerService {
 	}
 
 	@Override
+	@Transactional
 	public Seller updateSellerMobile(SellerDTO sellerdto, String token) throws SellerException {
 		
 		if(token.contains("seller") == false) {
@@ -121,7 +133,7 @@ public class SellerServiceImpl implements SellerService {
 		
 		Seller existingSeller=sellerDao.findById(user.getUserId()).orElseThrow(()->new SellerException("Seller not found for this ID: "+ user.getUserId()));
 		
-		if(existingSeller.getPassword().equals(sellerdto.getPassword())) {
+		if(passwordEncoderUtil.matchesPassword(sellerdto.getPassword(), existingSeller.getPassword())) {
 			existingSeller.setMobile(sellerdto.getMobile());
 			return sellerDao.save(existingSeller);
 		}
@@ -166,6 +178,7 @@ public class SellerServiceImpl implements SellerService {
 	// Method to update password - based on current token
 	
 	@Override
+	@Transactional
 	public SessionDTO updateSellerPassword(SellerDTO sellerDTO, String token) {
 				
 		if(token.contains("seller") == false) {
@@ -189,7 +202,9 @@ public class SellerServiceImpl implements SellerService {
 			throw new SellerException("Verification error. Mobile number does not match");
 		}
 			
-		existingSeller.setPassword(sellerDTO.getPassword());
+		// Hash the password using bcrypt
+	String hashedPassword = passwordEncoderUtil.encodePassword(sellerDTO.getPassword());
+	existingSeller.setPassword(hashedPassword);
 			
 		sellerDao.save(existingSeller);
 			

@@ -7,7 +7,7 @@ import com.masai.exception.LoginException;
 import com.masai.exception.OrderException;
 import com.masai.models.Customer;
 import com.masai.models.Order;
-import com.masai.models.OrderDTO;
+import com.masai.dto.OrderDTO;
 
 public interface OrderService {
 	public Order saveOrder(OrderDTO odto,String token) throws LoginException, OrderException;

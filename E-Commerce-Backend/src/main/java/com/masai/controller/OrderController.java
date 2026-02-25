@@ -4,7 +4,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.masai.models.Customer;
 import com.masai.models.Order;
-import com.masai.models.OrderDTO;
+import com.masai.dto.OrderDTO;
 import com.masai.repository.OrderDao;
 import com.masai.service.OrderService;
 

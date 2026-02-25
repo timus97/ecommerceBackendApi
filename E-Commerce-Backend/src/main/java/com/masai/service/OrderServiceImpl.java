@@ -10,15 +10,16 @@ import org.springframework.stereotype.Service;
 
 import com.masai.exception.LoginException;
 import com.masai.exception.OrderException;
-import com.masai.models.CartDTO;
+import com.masai.dto.CartDTO;
 import com.masai.models.CartItem;
 import com.masai.models.Customer;
 import com.masai.models.Order;
-import com.masai.models.OrderDTO;
+import com.masai.dto.OrderDTO;
 import com.masai.models.OrderStatusValues;
 import com.masai.models.Product;
 import com.masai.models.ProductStatus;
 import com.masai.repository.OrderDao;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class OrderServiceImpl implements OrderService {
@@ -33,6 +34,7 @@ public class OrderServiceImpl implements OrderService {
 	
 	
 	@Override
+	@Transactional
 	public Order saveOrder(OrderDTO odto,String token) throws LoginException, OrderException {
 		
 		Order newOrder= new Order();
@@ -116,6 +118,7 @@ public class OrderServiceImpl implements OrderService {
 	}
 
 	@Override
+	@Transactional
 	public Order cancelOrderByOrderId(Integer OrderId,String token) throws OrderException {
 		Order order= oDao.findById(OrderId).orElseThrow(()->new OrderException("No order exists with given OrderId "+ OrderId));
 		if(order.getCustomer().getCustomerId()==cs.getLoggedInCustomerDetails(token).getCustomerId()) {
@@ -151,6 +154,7 @@ public class OrderServiceImpl implements OrderService {
 	}
 
 	@Override
+	@Transactional
 	public Order updateOrderByOrder(OrderDTO orderdto, Integer OrderId,String token) throws OrderException,LoginException {
 		Order existingOrder= oDao.findById(OrderId).orElseThrow(()->new OrderException("No order exists with given OrderId "+ OrderId));
 		

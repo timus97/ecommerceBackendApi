@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.masai.models.Cart;
-import com.masai.models.CartDTO;
+import com.masai.dto.CartDTO;
 import com.masai.service.CartService;
 
 @RestController

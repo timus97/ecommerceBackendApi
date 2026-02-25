@@ -2,7 +2,7 @@ package com.masai.controller;
 
 import java.util.List;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.masai.models.CategoryEnum;
 import com.masai.models.Product;
-import com.masai.models.ProductDTO;
+import com.masai.dto.ProductDTO;
 import com.masai.models.ProductStatus;
 import com.masai.service.ProductService;
 

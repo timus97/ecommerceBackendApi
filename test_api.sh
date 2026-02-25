@@ -11,14 +11,37 @@
 #  5. Shuts down the app and cleans up.
 #
 #  Usage:
-#    cd E-Commerce-Backend
+#    cd /path/to/E-Commerce-Backend
+#    ../test_api.sh
+#
+#  Or from project root:
 #    ./test_api.sh
+#
+#  The script will:
+#    - Find an available port automatically
+#    - Build the application with 'test' profile
+#    - Start the Spring Boot application
+#    - Wait for startup completion and data seeding
+#    - Execute 60+ comprehensive API tests
+#    - Display results with pass/fail statistics
+#    - Clean up and shut down the application
 # =============================================================================
 
 set -euo pipefail
 
 # ── Configuration ────────────────────────────────────────────────────────────
-APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Determine if script is in project root or in E-Commerce-Backend directory
+if [[ -f "mvnw" && -d "E-Commerce-Backend" ]]; then
+    # Running from project root
+    APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/E-Commerce-Backend" && pwd)"
+elif [[ -f "mvnw" && -f "pom.xml" ]]; then
+    # Running from E-Commerce-Backend directory
+    APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+else
+    # Fallback to script location
+    APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
+
 LOG_FILE="${APP_DIR}/test_run.log"
 PASS=0
 FAIL=0
@@ -57,30 +80,49 @@ wait_for_app() {
     
     local count=0
     local max=60
-    while ! curl -s --head "$url" >/dev/null; do
+    while true; do
+        # Try to reach the app
+        if curl -s --connect-timeout 2 --max-time 2 "$url" >/dev/null 2>&1; then
+            echo -e " ${GREEN}READY!${RESET}"
+            break
+        fi
+        
         echo -ne "."
         sleep 2
         ((count++))
+        
         if [[ $count -eq $max ]]; then
             echo -e "\n${RED}Timeout waiting for app to start. Check ${LOG_FILE}${RESET}"
+            echo -e "${RED}Last 20 lines of log:${RESET}"
+            tail -20 "$LOG_FILE"
             exit 1
         fi
+        
         # Check if process is still running
         if ! kill -0 "$APP_PID" 2>/dev/null; then
             echo -e "\n${RED}Application failed to start. Check ${LOG_FILE}${RESET}"
+            echo -e "${RED}Last 20 lines of log:${RESET}"
+            tail -20 "$LOG_FILE"
             exit 1
         fi
     done
-    echo -e " ${GREEN}READY!${RESET}"
     
     # Wait a bit more for DataSeeder to finish (it runs on start)
     echo -ne "${YELLOW}Waiting for DataSeeder to complete...${RESET}"
-    while ! grep -q "DataSeeder: DONE" "$LOG_FILE"; do
+    local seeder_count=0
+    while [[ $seeder_count -lt 30 ]]; do
+        if grep -q "DataSeeder: DONE" "$LOG_FILE" 2>/dev/null; then
+            echo -e " ${GREEN}DONE!${RESET}"
+            break
+        fi
         echo -ne "."
         sleep 1
-        if ! kill -0 "$APP_PID" 2>/dev/null; then break; fi
+        ((seeder_count++))
+        if ! kill -0 "$APP_PID" 2>/dev/null; then 
+            echo -e " ${YELLOW}(app stopped)${RESET}"
+            break
+        fi
     done
-    echo -e " ${GREEN}DONE!${RESET}"
 }
 
 # ── Test Helpers ─────────────────────────────────────────────────────────────
@@ -106,15 +148,16 @@ assert() {
     fi
 
     if $status_ok && $body_ok; then
-        echo -e "  ${GREEN}PASS${RESET}  [$actual]  $label"
+        echo -e "  ${GREEN}✓ PASS${RESET}  [$actual]  $label"
         ((PASS++)) || true
     else
-        echo -e "  ${RED}FAIL${RESET}  [got=$actual exp=$expected]  $label"
+        echo -e "  ${RED}✗ FAIL${RESET}  [got=$actual exp=$expected]  $label"
         if [[ -n "$snippet" ]] && ! $body_ok; then
             echo -e "         ${RED}Body did not contain: '$snippet'${RESET}"
         fi
         if [[ -n "$body" ]]; then
-            echo -e "         Response: $(echo "$body" | head -c 300)"
+            local response_preview=$(echo "$body" | head -c 300 | tr '\n' ' ')
+            echo -e "         Response: $response_preview"
         fi
         ((FAIL++)) || true
     fi
@@ -127,23 +170,57 @@ curl_json() {
     local tmp
     tmp=$(mktemp)
     local status
-    status=$(curl -s -o "$tmp" -w "%{http_code}" \
-        -X "$method" \
-        -H "Content-Type: application/json" \
-        "$@" \
-        "${BASE_URL}${path}")
+    
+    # Build curl command with proper headers and data handling
+    local curl_cmd="curl -s -o \"$tmp\" -w \"%{http_code}\" -X \"$method\" -H \"Content-Type: application/json\""
+    
+    # Process additional arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -H)
+                # Add custom header
+                curl_cmd="$curl_cmd -H \"$2\""
+                shift 2
+                ;;
+            -d)
+                # Add data
+                curl_cmd="$curl_cmd -d '$2'"
+                shift 2
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+    
+    # Add the URL at the end
+    curl_cmd="$curl_cmd \"${BASE_URL}${path}\""
+    
+    # Execute the curl command
+    status=$(eval "$curl_cmd")
     RESP_BODY=$(cat "$tmp")
     rm -f "$tmp"
     echo "$status"
 }
 
 extract() {
-    echo "$RESP_BODY" | grep -o "\"$1\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" \
-        | head -1 | sed 's/.*: *"\(.*\)"/\1/'
+    local field="$1"
+    # Try to extract string value from JSON
+    echo "$RESP_BODY" | grep -o "\"$field\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" \
+        | head -1 | sed 's/.*: *"\(.*\)"/\1/' || echo ""
 }
+
 extract_int() {
-    echo "$RESP_BODY" | grep -o "\"$1\"[[:space:]]*:[[:space:]]*[0-9]*" \
-        | head -1 | grep -o '[0-9]*$'
+    local field="$1"
+    # Try to extract integer value from JSON
+    echo "$RESP_BODY" | grep -o "\"$field\"[[:space:]]*:[[:space:]]*[0-9]*" \
+        | head -1 | grep -o '[0-9]*$' || echo ""
+}
+
+# Helper to check if response contains text (case insensitive)
+contains_text() {
+    local text="$1"
+    echo "$RESP_BODY" | grep -qi "$text" && return 0 || return 1
 }
 
 # ── Main Execution ───────────────────────────────────────────────────────────

@@ -7,10 +7,10 @@ import com.masai.exception.CustomerNotFoundException;
 import com.masai.models.Address;
 import com.masai.models.CreditCard;
 import com.masai.models.Customer;
-import com.masai.models.CustomerDTO;
-import com.masai.models.CustomerUpdateDTO;
+import com.masai.dto.CustomerDTO;
+import com.masai.dto.CustomerUpdateDTO;
 import com.masai.models.Order;
-import com.masai.models.SessionDTO;
+import com.masai.dto.SessionDTO;
 
 public interface CustomerService {
 	

@@ -1,6 +1,6 @@
 package com.masai.controller;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -19,9 +19,9 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.masai.models.ReviewRequestDTO;
-import com.masai.models.ReviewResponseDTO;
-import com.masai.models.ReviewSummaryDTO;
+import com.masai.dto.ReviewRequestDTO;
+import com.masai.dto.ReviewResponseDTO;
+import com.masai.dto.ReviewSummaryDTO;
 import com.masai.service.ReviewService;
 
 import io.swagger.v3.oas.annotations.Operation;
