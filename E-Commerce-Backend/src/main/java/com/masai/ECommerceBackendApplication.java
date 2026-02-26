@@ -3,6 +3,8 @@ package com.masai;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 
 import io.swagger.v3.oas.models.Components;
@@ -12,7 +14,7 @@ import io.swagger.v3.oas.models.info.License;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 
 
-@SpringBootApplication
+@SpringBootApplication(exclude = {SecurityAutoConfiguration.class, UserDetailsServiceAutoConfiguration.class})
 public class ECommerceBackendApplication {
 
 	public static void main(String[] args) {
@@ -27,5 +29,5 @@ public class ECommerceBackendApplication {
 	    .info(new Info().title("E-Commerce Application REST API").version(appVersion)
 	            .license(new License().name("Apache 2.0").url("http://springdoc.org")));
 	}
-
+	
 }

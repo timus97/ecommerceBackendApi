@@ -1,5 +1,5 @@
 package com.masai.models;
-import javax.validation.constraints.*;
+import jakarta.validation.constraints.*;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

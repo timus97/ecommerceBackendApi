@@ -24,6 +24,12 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
+			<exclusions>
+				<exclusion>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-starter-security</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 
 		<dependency>
@@ -39,12 +45,26 @@
 			<version>3.45.1.0</version>
 			<scope>runtime</scope>
 		</dependency>
+		<!-- Hibernate community dialect for proper SQLite support (no ALTER TABLE constraints) -->
+		<dependency>
+			<groupId>org.hibernate.orm</groupId>
+			<artifactId>hibernate-community-dialects</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
+			<exclusions>
+				<exclusion>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-starter-security</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.springframework.security</groupId>
+					<artifactId>spring-security-test</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
-		
 		
 		<!-- EXTRA DEPENDENCIES ADDED  -->
 		
@@ -53,14 +73,21 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-validation</artifactId>
 		</dependency>
-		
-		<!--  Swagger dependency -->
+
+		<!-- Security crypto for password hashing (no web/security auto-config) -->
 		<dependency>
-      <groupId>org.springdoc</groupId>
-      <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-      <version>2.3.0</version>
-   </dependency>
-		
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-crypto</artifactId>
+			<version>6.3.0</version>
+		</dependency>
+
+		<!-- OpenAPI docs (no swagger UI) -->
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
+			<version>2.3.0</version>
+		</dependency>
+
 		<!-- https://mvnrepository.com/artifact/org.projectlombok/lombok -->
 		<dependency>
 		    <groupId>org.projectlombok</groupId>
@@ -69,12 +96,7 @@
 		    <scope>provided</scope>
 		</dependency>
 		
-	<!-- Spring Security for password encoding with bcrypt -->
-	<dependency>
-		<groupId>org.springframework.boot</groupId>
-		<artifactId>spring-boot-starter-security</artifactId>
-	</dependency>
-	
+
 	<!-- Mockito for mocking -->
 	<dependency>
 		<groupId>org.mockito</groupId>

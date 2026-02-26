@@ -1,9 +1,14 @@
 package com.masai.service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.ResponseBody;
 
@@ -12,6 +17,8 @@ import com.masai.exception.ProductNotFoundException;
 import com.masai.models.CategoryEnum;
 import com.masai.models.Product;
 import com.masai.dto.ProductDTO;
+import com.masai.dto.ProductSearchFilterDTO;
+import com.masai.dto.ProductSearchResponseDTO;
 import com.masai.models.ProductStatus;
 import com.masai.models.Seller;
 import com.masai.repository.ProductDao;
@@ -170,6 +177,51 @@ public class ProductServiceImpl implements ProductService {
 		else {
 			throw new ProductNotFoundException("No products with SellerId: "+id);
 		}
+	}
+
+	@Override
+	public Map<String, Object> searchAndFilterProducts(ProductSearchFilterDTO filterDTO) {
+		
+		// Validate and set default pagination values
+		Integer page = filterDTO.getPage() != null ? filterDTO.getPage() : 0;
+		Integer size = filterDTO.getSize() != null ? filterDTO.getSize() : 10;
+		
+		// Ensure page and size are positive
+		if (page < 0) page = 0;
+		if (size <= 0) size = 10;
+		
+		// Create Pageable object for pagination
+		Pageable pageable = PageRequest.of(page, size);
+		
+		// Call the repository method with all filter parameters
+		Page<ProductSearchResponseDTO> results = prodDao.searchAndFilterProducts(
+				filterDTO.getKeyword(),
+				filterDTO.getCategory(),
+				filterDTO.getStatus(),
+				filterDTO.getMinPrice(),
+				filterDTO.getMaxPrice(),
+				filterDTO.getMinRating(),
+				filterDTO.getManufacturer(),
+				filterDTO.getSellerId(),
+				pageable
+		);
+		
+		// If no results found, throw exception
+		if (results.isEmpty()) {
+			throw new ProductNotFoundException("No products found matching the search and filter criteria");
+		}
+		
+		// Build response map with pagination metadata
+		Map<String, Object> response = new HashMap<>();
+		response.put("content", results.getContent());
+		response.put("totalElements", results.getTotalElements());
+		response.put("totalPages", results.getTotalPages());
+		response.put("currentPage", results.getNumber());
+		response.put("pageSize", results.getSize());
+		response.put("hasNextPage", results.hasNext());
+		response.put("hasPreviousPage", results.hasPrevious());
+		
+		return response;
 	}
 
 }

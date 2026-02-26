@@ -30,16 +30,16 @@
 set -euo pipefail
 
 # ── Configuration ────────────────────────────────────────────────────────────
-# Determine if script is in project root or in E-Commerce-Backend directory
-if [[ -f "mvnw" && -d "E-Commerce-Backend" ]]; then
-    # Running from project root
-    APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/E-Commerce-Backend" && pwd)"
-elif [[ -f "mvnw" && -f "pom.xml" ]]; then
-    # Running from E-Commerce-Backend directory
-    APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve script directory (absolute path)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# App directory: prefer E-Commerce-Backend subdir if it contains pom.xml (nested layout)
+if [[ -f "${SCRIPT_DIR}/E-Commerce-Backend/pom.xml" ]]; then
+    APP_DIR="${SCRIPT_DIR}/E-Commerce-Backend"
+elif [[ -f "${SCRIPT_DIR}/pom.xml" ]]; then
+    APP_DIR="${SCRIPT_DIR}"
 else
-    # Fallback to script location
-    APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    echo "Error: Could not find pom.xml in ${SCRIPT_DIR} or ${SCRIPT_DIR}/E-Commerce-Backend" >&2
+    exit 1
 fi
 
 LOG_FILE="${APP_DIR}/test_run.log"
@@ -69,8 +69,12 @@ cleanup() {
 trap cleanup EXIT
 
 find_free_port() {
-    # Try to find a free port using python3, fallback to a random port if fails
-    python3 -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()' 2>/dev/null || echo $((RANDOM % 1000 + 8000))
+    # Try python3, then python, then fallback to a random port in 8000–8999
+    local port
+    port=$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()' 2>/dev/null) || \
+    port=$(python -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()' 2>/dev/null) || \
+    port=$((RANDOM % 1000 + 8000))
+    echo "$port"
 }
 
 wait_for_app() {
@@ -79,7 +83,7 @@ wait_for_app() {
     echo -ne "${YELLOW}Waiting for app to start on port ${port}...${RESET}"
     
     local count=0
-    local max=60
+    local max=90
     while true; do
         # Try to reach the app
         if curl -s --connect-timeout 2 --max-time 2 "$url" >/dev/null 2>&1; then
@@ -89,40 +93,43 @@ wait_for_app() {
         
         echo -ne "."
         sleep 2
-        ((count++))
+        ((count++)) || true
         
         if [[ $count -eq $max ]]; then
             echo -e "\n${RED}Timeout waiting for app to start. Check ${LOG_FILE}${RESET}"
-            echo -e "${RED}Last 20 lines of log:${RESET}"
-            tail -20 "$LOG_FILE"
+            echo -e "${RED}Last 30 lines of log:${RESET}"
+            tail -30 "$LOG_FILE" 2>/dev/null || echo "(log empty or missing)"
             exit 1
         fi
         
         # Check if process is still running
-        if ! kill -0 "$APP_PID" 2>/dev/null; then
-            echo -e "\n${RED}Application failed to start. Check ${LOG_FILE}${RESET}"
-            echo -e "${RED}Last 20 lines of log:${RESET}"
-            tail -20 "$LOG_FILE"
+        if [[ -n "${APP_PID:-}" ]] && ! kill -0 "$APP_PID" 2>/dev/null; then
+            echo -e "\n${RED}Application process exited. Check ${LOG_FILE}${RESET}"
+            echo -e "${RED}Last 30 lines of log:${RESET}"
+            tail -30 "$LOG_FILE" 2>/dev/null || echo "(log empty or missing)"
             exit 1
         fi
     done
     
-    # Wait a bit more for DataSeeder to finish (it runs on start)
+    # Wait a bit more for DataSeeder to finish (it runs on start with test profile)
     echo -ne "${YELLOW}Waiting for DataSeeder to complete...${RESET}"
     local seeder_count=0
-    while [[ $seeder_count -lt 30 ]]; do
-        if grep -q "DataSeeder: DONE" "$LOG_FILE" 2>/dev/null; then
+    while [[ $seeder_count -lt 45 ]]; do
+        if [[ -r "$LOG_FILE" ]] && grep -q "DataSeeder: DONE" "$LOG_FILE" 2>/dev/null; then
             echo -e " ${GREEN}DONE!${RESET}"
             break
         fi
         echo -ne "."
         sleep 1
-        ((seeder_count++))
-        if ! kill -0 "$APP_PID" 2>/dev/null; then 
+        ((seeder_count++)) || true
+        if [[ -n "${APP_PID:-}" ]] && ! kill -0 "$APP_PID" 2>/dev/null; then 
             echo -e " ${YELLOW}(app stopped)${RESET}"
             break
         fi
     done
+    if [[ $seeder_count -ge 45 ]]; then
+        echo -e " ${YELLOW}(timeout, continuing anyway)${RESET}"
+    fi
 }
 
 # ── Test Helpers ─────────────────────────────────────────────────────────────
@@ -235,10 +242,24 @@ BASE_URL="http://localhost:${PORT}"
 # 2. Start Application
 echo -e "${YELLOW}Building and starting application on port ${PORT}...${RESET}"
 echo "Logs are being redirected to ${LOG_FILE}"
+echo "App directory: ${APP_DIR}"
 
-# Run in background
+# Prefer mvn if available (avoids mvnw line-ending/permission issues on Windows/Git Bash)
+MVN_CMD=""
+if command -v mvn >/dev/null 2>&1; then
+    MVN_CMD="mvn"
+elif [[ -x "$APP_DIR/mvnw" ]]; then
+    MVN_CMD="$APP_DIR/mvnw"
+elif [[ -f "$APP_DIR/mvnw" ]]; then
+    MVN_CMD="bash $APP_DIR/mvnw"
+else
+    echo -e "${RED}Error: Neither 'mvn' nor mvnw found. Install Maven or ensure mvnw exists in ${APP_DIR}${RESET}" >&2
+    exit 1
+fi
+
+# Run in background from APP_DIR
 cd "$APP_DIR"
-./mvnw spring-boot:run \
+$MVN_CMD spring-boot:run \
     -Dspring-boot.run.profiles=test \
     -Dspring-boot.run.arguments="--server.port=${PORT}" \
     > "$LOG_FILE" 2>&1 &
@@ -277,7 +298,7 @@ assert "Duplicate seller → 400" 400 "$STATUS"
 
 # 1.3 Login seller (seeded seller1)
 STATUS=$(curl_json POST /login/seller -d '{
-  "mobileId":"9876543210",
+  "mobile":"9876543210",
   "password":"Seller@123"
 }')
 assert "Login seeded seller1" 202 "$STATUS" "token" "$RESP_BODY"
@@ -285,7 +306,7 @@ SELLER1_TOKEN=$(extract token)
 
 # 1.4 Login the newly registered seller
 STATUS=$(curl_json POST /login/seller -d '{
-  "mobileId":"7000000001",
+  "mobile":"7000000001",
   "password":"TestSell1"
 }')
 assert "Login new seller" 202 "$STATUS" "token" "$RESP_BODY"
@@ -293,7 +314,7 @@ NEW_SELLER_TOKEN=$(extract token)
 
 # 1.5 Invalid seller login
 STATUS=$(curl_json POST /login/seller -d '{
-  "mobileId":"9876543210",
+  "mobile":"9876543210",
   "password":"WrongPass1"
 }')
 assert "Invalid seller password → 400" 400 "$STATUS"
@@ -377,21 +398,21 @@ STATUS=$(curl_json PUT /seller \
   }')
 assert "PUT /seller (update)" 202 "$STATUS"
 
-# 3.6 Update seller mobile
+# 3.6 Update seller mobile (DTO has mobile + password; mobile is the new value)
 STATUS=$(curl_json PUT /seller/update/mobile \
   -H "token: $NEW_SELLER_TOKEN" \
-  -d '{"mobileId":"7000000001","password":"TestSell1","newMobile":"7000000099"}')
+  -d '{"mobile":"7000000099","password":"TestSell1"}')
 assert "PUT /seller/update/mobile" 202 "$STATUS"
 
 # 3.7 Update seller password (logs out, new token needed)
 STATUS=$(curl_json PUT /seller/update/password \
   -H "token: $NEW_SELLER_TOKEN" \
-  -d '{"mobileId":"7000000099","password":"TestSell2"}')
+  -d '{"mobile":"7000000099","password":"TestSell2"}')
 assert "PUT /seller/update/password" 202 "$STATUS"
 
 # Re-login new seller with updated credentials
 STATUS=$(curl_json POST /login/seller -d '{
-  "mobileId":"7000000099",
+  "mobile":"7000000099",
   "password":"TestSell2"
 }')
 assert "Re-login new seller after password change" 202 "$STATUS" "token" "$RESP_BODY"

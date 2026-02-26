@@ -38,7 +38,7 @@ public class Seller {
 	@Pattern(regexp="[A-Za-z\\s]+", message="First Name should contains alphabets only")
 	private String lastName;
 	
-   @Pattern(regexp="[A-Za-z0-9!@#$%^&*_]{8,15}", message="Please Enter a valid Password")
+   @Pattern(regexp="([A-Za-z0-9!@#$%^&*_]{8,15}|\\$2[aby]\\$\\d{2}\\$.{53})", message="Please Enter a valid Password")
 	private String password;
 	
 	@NotNull(message="Please enter your mobile Number")

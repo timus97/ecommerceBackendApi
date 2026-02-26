@@ -4,6 +4,7 @@ import com.masai.models.*;
 import com.masai.repository.CustomerDao;
 import com.masai.repository.ProductDao;
 import com.masai.repository.SellerDao;
+import com.masai.util.PasswordEncoderUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +40,7 @@ public class DataSeeder implements CommandLineRunner {
     @Autowired private SellerDao sellerDao;
     @Autowired private CustomerDao customerDao;
     @Autowired private ProductDao productDao;
+    @Autowired private PasswordEncoderUtil passwordEncoderUtil;
 
     @Override
     public void run(String... args) {
@@ -52,7 +54,7 @@ public class DataSeeder implements CommandLineRunner {
         seller1.setLastName("Sharma");
         seller1.setMobile("9876543210");
         seller1.setEmailId("ravi.sharma@techstore.com");
-        seller1.setPassword("Seller@123");
+        seller1.setPassword(passwordEncoderUtil.encodePassword("Seller@123"));
         seller1.setProduct(new ArrayList<>());
         sellerDao.save(seller1);
 
@@ -61,7 +63,7 @@ public class DataSeeder implements CommandLineRunner {
         seller2.setLastName("Nair");
         seller2.setMobile("8765432109");
         seller2.setEmailId("priya.nair@fashionhub.com");
-        seller2.setPassword("Seller@456");
+        seller2.setPassword(passwordEncoderUtil.encodePassword("Seller@456"));
         seller2.setProduct(new ArrayList<>());
         sellerDao.save(seller2);
 
@@ -124,22 +126,22 @@ public class DataSeeder implements CommandLineRunner {
         // ── 3. CUSTOMERS ──────────────────────────────────────────────────────
         // Customer 1 – fully set up with address + credit card
         Customer c1 = buildCustomer("Amit", "Verma",
-                "9123456780", "amit.verma@gmail.com", "Amit@1234");
+                "9123456780", "amit.verma@gmail.com", passwordEncoderUtil.encodePassword("Amit@1234"));
         setupCart(c1);
         setupWishlist(c1);
         setupAddress(c1, "home",
-                "12", "Sunrise Apartments", "Koramangala",
+                "12A", "Sunrise Apartments", "Koramangala",
                 "Bangalore", "KARNATAKA", "560034");
         setupCreditCard(c1, "4111111111111111", "12/26", "123");
         customerDao.save(c1);
 
         // Customer 2 – has address, no credit card (to test PENDING order flow)
         Customer c2 = buildCustomer("Sneha", "Patel",
-                "9234567801", "sneha.patel@gmail.com", "Sneha@5678");
+                "9234567801", "sneha.patel@gmail.com", passwordEncoderUtil.encodePassword("Sneha@5678"));
         setupCart(c2);
         setupWishlist(c2);
         setupAddress(c2, "home",
-                "45", "Green Valley", "Bandra West",
+                "45A", "Green Valley", "Bandra West",
                 "Mumbai", "MAHARASHTRA", "400050");
         setupAddress(c2, "work",
                 "101", "Tech Park", "Whitefield",
@@ -148,7 +150,7 @@ public class DataSeeder implements CommandLineRunner {
 
         // Customer 3 – minimal setup for registration / login testing
         Customer c3 = buildCustomer("Rahul", "Singh",
-                "9345678012", "rahul.singh@gmail.com", "Rahul@9012");
+                "9345678012", "rahul.singh@gmail.com", passwordEncoderUtil.encodePassword("Rahul@9012"));
         setupCart(c3);
         setupWishlist(c3);
         customerDao.save(c3);

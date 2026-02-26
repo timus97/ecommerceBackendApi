@@ -64,7 +64,7 @@ public class Product {
 	@Enumerated(EnumType.STRING)
 	private ProductStatus status;
 
-	@ManyToOne(cascade = CascadeType.ALL)
+	@ManyToOne
 	@JsonIgnore
 	private Seller seller;
 

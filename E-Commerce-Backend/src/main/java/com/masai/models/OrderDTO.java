@@ -1,7 +1,7 @@
 package com.masai.models;
 
-import javax.persistence.Embedded;
-import javax.validation.constraints.NotNull;
+import jakarta.persistence.Embedded;
+import jakarta.validation.constraints.NotNull;
 
 import org.hibernate.validator.constraints.CreditCardNumber;
 

@@ -1,10 +1,12 @@
 package com.masai.service;
 
 import java.util.List;
+import java.util.Map;
 
 import com.masai.models.CategoryEnum;
 import com.masai.models.Product;
 import com.masai.dto.ProductDTO;
+import com.masai.dto.ProductSearchFilterDTO;
 import com.masai.models.ProductStatus;
 
 public interface ProductService {
@@ -28,5 +30,12 @@ public interface ProductService {
 	
 	
 	public Product updateProductQuantityWithId(Integer id,ProductDTO prodDTO);
+	
+	/**
+	 * Search and filter products with multiple criteria
+	 * @param filterDTO contains search keyword and filter criteria
+	 * @return Map containing search results and pagination metadata
+	 */
+	public Map<String, Object> searchAndFilterProducts(ProductSearchFilterDTO filterDTO);
 
 }
