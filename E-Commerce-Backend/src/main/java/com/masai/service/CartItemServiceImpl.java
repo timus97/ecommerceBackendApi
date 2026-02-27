@@ -8,20 +8,20 @@ import com.masai.dto.CartDTO;
 import com.masai.models.CartItem;
 import com.masai.models.Product;
 import com.masai.models.ProductStatus;
-import com.masai.repository.ProductDao;
+import com.masai.repository.ProductRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CartItemServiceImpl implements CartItemService{
 
 	@Autowired
-	ProductDao productDao;
+	ProductRepository productRepository;
 
 	@Override
 	@Transactional
 	public CartItem createItemforCart(CartDTO cartdto) {
 		
-		Product existingProduct = productDao.findById(cartdto.getProductId()).orElseThrow( () -> new ProductNotFoundException("Product Not found"));
+		Product existingProduct = productRepository.findById(cartdto.getProductId()).orElseThrow( () -> new ProductNotFoundException("Product Not found"));
 		
 		if(existingProduct.getStatus().equals(ProductStatus.OUTOFSTOCK) || existingProduct.getQuantity() == 0) {
 			throw new ProductNotFoundException("Product OUT OF STOCK");

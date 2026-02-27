@@ -23,12 +23,11 @@ import com.masai.models.Review;
 import com.masai.dto.ReviewRequestDTO;
 import com.masai.dto.ReviewResponseDTO;
 import com.masai.models.UserSession;
-import com.masai.repository.CustomerDao;
-import com.masai.repository.ProductDao;
-import com.masai.repository.ReviewDao;
-import com.masai.repository.SessionDao;
-import com.masai.service.LoginLogoutService;
+import com.masai.repository.CustomerRepository;
+import com.masai.repository.ProductRepository;
+import com.masai.repository.ReviewRepository;
 import com.masai.service.ReviewServiceImpl;
+import com.masai.util.TokenValidationUtil;
 
 /**
  * Unit tests for ReviewServiceImpl (mocks for dependencies).
@@ -38,19 +37,16 @@ import com.masai.service.ReviewServiceImpl;
 class ReviewServiceTest {
 
     @Mock
-    private ReviewDao reviewDao;
+    private ReviewRepository reviewRepository;
 
     @Mock
-    private ProductDao productDao;
+    private ProductRepository productRepository;
 
     @Mock
-    private CustomerDao customerDao;
+    private CustomerRepository customerRepository;
 
     @Mock
-    private SessionDao sessionDao;
-
-    @Mock
-    private LoginLogoutService loginService;
+    private TokenValidationUtil tokenValidationUtil;
 
     @InjectMocks
     private ReviewServiceImpl reviewService;
@@ -83,34 +79,32 @@ class ReviewServiceTest {
 
     @Test
     void testAddReview_Success() throws Exception {
-        // Mock token validation (void method)
-        doNothing().when(loginService).checkTokenStatus(anyString());
-        when(sessionDao.findByToken(anyString())).thenReturn(Optional.of(userSession));
-        when(customerDao.findById(1)).thenReturn(Optional.of(customer));
-        when(productDao.findById(1)).thenReturn(Optional.of(product));
-        when(reviewDao.existsByCustomerAndProduct(any(), any())).thenReturn(false);
+        when(tokenValidationUtil.validateCustomerToken(anyString())).thenReturn(userSession);
+        when(customerRepository.findById(1)).thenReturn(Optional.of(customer));
+        when(productRepository.findById(1)).thenReturn(Optional.of(product));
+        when(reviewRepository.existsByCustomerAndProduct(any(), any())).thenReturn(false);
 
         Review savedReview = new Review();
         savedReview.setId(10L);
         savedReview.setRating(4);
         savedReview.setCustomer(customer);
         savedReview.setProduct(product);
-        when(reviewDao.save(any(Review.class))).thenReturn(savedReview);
+        when(reviewRepository.save(any(Review.class))).thenReturn(savedReview);
 
         ReviewResponseDTO response = reviewService.addReview(requestDTO, "customer_testtoken");
 
         assertNotNull(response);
         assertEquals(4, response.getRating());
         assertEquals(10L, response.getId());
-        verify(reviewDao).save(any(Review.class));
+        verify(reviewRepository).save(any(Review.class));
     }
 
     @Test
     void testAddReview_DuplicateReview_ThrowsException() {
-        when(sessionDao.findByToken(anyString())).thenReturn(Optional.of(userSession));
-        when(customerDao.findById(1)).thenReturn(Optional.of(customer));
-        when(productDao.findById(1)).thenReturn(Optional.of(product));
-        when(reviewDao.existsByCustomerAndProduct(any(), any())).thenReturn(true);
+        when(tokenValidationUtil.validateCustomerToken(anyString())).thenReturn(userSession);
+        when(customerRepository.findById(1)).thenReturn(Optional.of(customer));
+        when(productRepository.findById(1)).thenReturn(Optional.of(product));
+        when(reviewRepository.existsByCustomerAndProduct(any(), any())).thenReturn(true);
 
         assertThrows(ReviewException.class, () -> 
             reviewService.addReview(requestDTO, "customer_testtoken"));
@@ -120,7 +114,12 @@ class ReviewServiceTest {
     void testAddReview_InvalidRating_ThrowsException() {
         requestDTO.setRating(6);  // Invalid >5
 
-        assertThrows(Exception.class, () ->  // Validation happens before service in controller, but test here
+        when(tokenValidationUtil.validateCustomerToken(anyString())).thenReturn(userSession);
+        when(customerRepository.findById(1)).thenReturn(Optional.of(customer));
+        when(productRepository.findById(1)).thenReturn(Optional.of(product));
+        when(reviewRepository.existsByCustomerAndProduct(any(), any())).thenReturn(false);
+
+        assertThrows(ReviewException.class, () ->
             reviewService.addReview(requestDTO, "customer_testtoken"));
     }
 

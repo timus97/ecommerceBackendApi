@@ -21,39 +21,38 @@ import com.masai.models.UserSession;
 import com.masai.models.Wishlist;
 import com.masai.models.WishlistItem;
 import com.masai.dto.WishlistResponseDTO;
-import com.masai.repository.CartDao;
-import com.masai.repository.CustomerDao;
-import com.masai.repository.ProductDao;
-import com.masai.repository.SessionDao;
-import com.masai.repository.WishlistDao;
-import com.masai.repository.WishlistItemDao;
+import com.masai.repository.CartRepository;
+import com.masai.repository.CustomerRepository;
+import com.masai.repository.ProductRepository;
+import com.masai.repository.WishlistRepository;
+import com.masai.repository.WishlistItemRepository;
+import com.masai.util.TokenValidationUtil;
 
 @Service
 public class WishlistServiceImpl implements WishlistService {
 
     @Autowired
-    private SessionDao sessionDao;
+    private TokenValidationUtil tokenValidationUtil;
 
     @Autowired
-    private CustomerDao customerDao;
+    private CustomerRepository customerRepository;
 
     @Autowired
-    private ProductDao productDao;
+    private ProductRepository productRepository;
 
     @Autowired
-    private WishlistDao wishlistDao;
+    private WishlistRepository wishlistRepository;
 
     @Autowired
-    private WishlistItemDao wishlistItemDao;
+    private WishlistItemRepository wishlistItemRepository;
 
     @Autowired
-    private CartDao cartDao;
+    private CartRepository cartRepository;
 
     @Autowired
     private CartItemService cartItemService;
 
-    @Autowired
-    private LoginLogoutService loginService;
+
 
     // -----------------------------------------------------------------------
     // Helper: validate customer token and return the Customer entity.
@@ -61,24 +60,18 @@ public class WishlistServiceImpl implements WishlistService {
     // feature was introduced (so existing accounts always have a wishlist).
     // -----------------------------------------------------------------------
     private Customer resolveCustomer(String token) {
-        if (!token.contains("customer")) {
-            throw new LoginException("Invalid session token for customer");
-        }
-        loginService.checkTokenStatus(token);
+        UserSession user = tokenValidationUtil.validateCustomerToken(token);
 
-        UserSession user = sessionDao.findByToken(token)
-                .orElseThrow(() -> new LoginException("Session not found. Please login again."));
-
-        Customer customer = customerDao.findById(user.getUserId())
+        Customer customer = customerRepository.findById(user.getUserId())
                 .orElseThrow(() -> new CustomerNotFoundException("Customer not found"));
 
         // Lazily initialise wishlist for existing customers
         if (customer.getCustomerWishlist() == null) {
             Wishlist wishlist = new Wishlist();
             wishlist.setCustomer(customer);
-            wishlist = wishlistDao.save(wishlist);
+            wishlist = wishlistRepository.save(wishlist);
             customer.setCustomerWishlist(wishlist);
-            customerDao.save(customer);
+            customerRepository.save(customer);
         }
 
         return customer;
@@ -114,13 +107,13 @@ public class WishlistServiceImpl implements WishlistService {
         Wishlist wishlist = customer.getCustomerWishlist();
 
         // Duplicate check
-        Optional<WishlistItem> existing = wishlistItemDao
+        Optional<WishlistItem> existing = wishlistItemRepository
                 .findByWishlist_WishlistIdAndProduct_ProductId(wishlist.getWishlistId(), productId);
         if (existing.isPresent()) {
             throw new WishlistException("Product is already in your wishlist");
         }
 
-        Product product = productDao.findById(productId)
+        Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ProductNotFoundException("Product not found with id: " + productId));
 
         WishlistItem item = new WishlistItem();
@@ -128,7 +121,7 @@ public class WishlistServiceImpl implements WishlistService {
         item.setAddedAt(LocalDateTime.now());
         item.setWishlist(wishlist);
 
-        WishlistItem saved = wishlistItemDao.save(item);
+        WishlistItem saved = wishlistItemRepository.save(item);
         return toDTO(saved);
     }
 
@@ -140,7 +133,7 @@ public class WishlistServiceImpl implements WishlistService {
         Customer customer = resolveCustomer(token);
         Wishlist wishlist = customer.getCustomerWishlist();
 
-        return wishlistItemDao
+        return wishlistItemRepository
                 .findByWishlist_WishlistIdOrderByAddedAtDesc(wishlist.getWishlistId())
                 .stream()
                 .map(this::toDTO)
@@ -156,11 +149,11 @@ public class WishlistServiceImpl implements WishlistService {
         Customer customer = resolveCustomer(token);
         Wishlist wishlist = customer.getCustomerWishlist();
 
-        WishlistItem item = wishlistItemDao
+        WishlistItem item = wishlistItemRepository
                 .findByWishlist_WishlistIdAndProduct_ProductId(wishlist.getWishlistId(), productId)
                 .orElseThrow(() -> new WishlistException("Product with id " + productId + " is not in your wishlist"));
 
-        wishlistItemDao.delete(item);
+        wishlistItemRepository.delete(item);
         return "Product removed from wishlist successfully";
     }
 
@@ -174,12 +167,12 @@ public class WishlistServiceImpl implements WishlistService {
         Wishlist wishlist = customer.getCustomerWishlist();
 
         // Ensure the item is actually in the wishlist
-        WishlistItem item = wishlistItemDao
+        WishlistItem item = wishlistItemRepository
                 .findByWishlist_WishlistIdAndProduct_ProductId(wishlist.getWishlistId(), productId)
                 .orElseThrow(() -> new WishlistException("Product with id " + productId + " is not in your wishlist"));
 
         // Remove from wishlist
-        wishlistItemDao.delete(item);
+        wishlistItemRepository.delete(item);
 
         // Add to cart — reuse existing CartItemService logic
         Cart customerCart = customer.getCustomerCart();
@@ -205,7 +198,7 @@ public class WishlistServiceImpl implements WishlistService {
             customerCart.setCartTotal(currentTotal + cartItem.getCartProduct().getPrice());
         }
 
-        return cartDao.save(customerCart);
+        return cartRepository.save(customerCart);
     }
 
     // -----------------------------------------------------------------------
@@ -216,7 +209,7 @@ public class WishlistServiceImpl implements WishlistService {
         Customer customer = resolveCustomer(token);
         Wishlist wishlist = customer.getCustomerWishlist();
 
-        return wishlistItemDao
+        return wishlistItemRepository
                 .findByWishlist_WishlistIdAndProduct_ProductId(wishlist.getWishlistId(), productId)
                 .isPresent();
     }

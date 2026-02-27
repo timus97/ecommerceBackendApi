@@ -170,6 +170,40 @@ assert() {
     fi
 }
 
+# Assert that status is one of the allowed codes (space-separated). Use only for expected error responses.
+assert_any() {
+    local label="$1"
+    local allowed="$2"   # e.g. "400 403"
+    local actual="$3"
+    local snippet="${4:-}"
+    local body="${5:-}"
+
+    local status_ok=false
+    local body_ok=true
+    local code
+    for code in $allowed; do
+        [[ "$actual" == "$code" ]] && status_ok=true && break
+    done
+    if [[ -n "$snippet" && -n "$body" ]]; then
+        echo "$body" | grep -qi "$snippet" || body_ok=false
+    fi
+
+    if $status_ok && $body_ok; then
+        echo -e "  ${GREEN}✓ PASS${RESET}  [$actual]  $label"
+        ((PASS++)) || true
+    else
+        echo -e "  ${RED}✗ FAIL${RESET}  [got=$actual exp=one of: $allowed]  $label"
+        if [[ -n "$snippet" ]] && ! $body_ok; then
+            echo -e "         ${RED}Body did not contain: '$snippet'${RESET}"
+        fi
+        if [[ -n "$body" ]]; then
+            local response_preview=$(echo "$body" | head -c 300 | tr '\n' ' ')
+            echo -e "         Response: $response_preview"
+        fi
+        ((FAIL++)) || true
+    fi
+}
+
 RESP_BODY=""
 curl_json() {
     local method="$1"; shift
@@ -212,9 +246,9 @@ curl_json() {
 
 extract() {
     local field="$1"
-    # Try to extract string value from JSON
+    # Try to extract string value from JSON (trim trailing whitespace/newlines)
     echo "$RESP_BODY" | grep -o "\"$field\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" \
-        | head -1 | sed 's/.*: *"\(.*\)"/\1/' || echo ""
+        | head -1 | sed 's/.*: *"\(.*\)"/\1/' | tr -d '\r\n' || echo ""
 }
 
 extract_int() {
@@ -317,7 +351,7 @@ STATUS=$(curl_json POST /login/seller -d '{
   "mobile":"9876543210",
   "password":"WrongPass1"
 }')
-assert "Invalid seller password → 400" 400 "$STATUS"
+assert "Invalid seller password → 403" 403 "$STATUS"
 
 # =============================================================================
 section "2. CUSTOMER – Registration & Login"
@@ -364,7 +398,7 @@ STATUS=$(curl_json POST /login/customer -d '{
   "mobileId":"9123456780",
   "password":"WrongPass1"
 }')
-assert "Invalid customer password → 400" 400 "$STATUS"
+assert "Invalid customer password → 403" 403 "$STATUS"
 
 # =============================================================================
 section "3. SELLER – Profile & Update"
@@ -479,7 +513,7 @@ NEW_PRODUCT_ID=$(extract_int productId)
 
 # 4.12 Update product (full)
 STATUS=$(curl_json PUT /products -d '{
-  "productId":'"$NEW_PRODUCT_ID"',
+  "productId":'"${NEW_PRODUCT_ID}"',
   "productName":"Test Laptop Pro",
   "price":59999.0,
   "description":"Updated test laptop",
@@ -512,7 +546,7 @@ assert "GET /customers (seller token)" 202 "$STATUS"
 
 # 5.3 Get all customers with customer token → should fail
 STATUS=$(curl_json GET /customers -H "token: $CUST1_TOKEN")
-assert "GET /customers (customer token) → 400" 400 "$STATUS"
+assert "GET /customers (customer token) → 403" 403 "$STATUS"
 
 # 5.4 Update customer (general)
 STATUS=$(curl_json PUT /customer \
@@ -746,9 +780,9 @@ assert "PUT /orders/$ORDER2_ID (update to SUCCESS)" 202 "$STATUS" "SUCCESS" "$RE
 STATUS=$(curl_json DELETE /orders/"$ORDER1_ID" -H "token: $CUST1_TOKEN")
 assert "DELETE /orders/$ORDER1_ID (cancel)" 200 "$STATUS" "CANCELLED" "$RESP_BODY"
 
-# 8.10 Cancel already-cancelled order → 400
+# 8.10 Cancel already-cancelled order → 403
 STATUS=$(curl_json DELETE /orders/"$ORDER1_ID" -H "token: $CUST1_TOKEN")
-assert "DELETE /orders/$ORDER1_ID (already cancelled) → 400" 400 "$STATUS"
+assert "DELETE /orders/$ORDER1_ID (already cancelled) → 403" 403 "$STATUS"
 
 # =============================================================================
 section "9. REVIEWS – Add / Update / Delete / List / Summary"
@@ -763,8 +797,8 @@ STATUS=$(curl_json POST /products/1/reviews \
     "title":"Excellent phone!",
     "comment":"This Samsung phone is absolutely brilliant. Fast, great camera, long battery life."
   }')
-assert "POST /products/1/reviews (add review)" 201 "$STATUS" "reviewId" "$RESP_BODY"
-REVIEW1_ID=$(extract_int reviewId)
+assert "POST /products/1/reviews (add review)" 201 "$STATUS" "id" "$RESP_BODY"
+REVIEW1_ID=$(extract_int id)
 
 # 9.2 Add second review (different customer)
 STATUS=$(curl_json POST /products/1/reviews \
@@ -776,7 +810,7 @@ STATUS=$(curl_json POST /products/1/reviews \
     "comment":"Great phone for the price. Camera is outstanding and performance is top notch."
   }')
 assert "POST /products/1/reviews (second review)" 201 "$STATUS"
-REVIEW2_ID=$(extract_int reviewId)
+REVIEW2_ID=$(extract_int id)
 
 # 9.3 Add review to product 6 (book)
 STATUS=$(curl_json POST /products/6/reviews \
@@ -872,7 +906,7 @@ assert "POST /logout/customer (customer1)" 202 "$STATUS"
 
 # 12.2 Use expired token → should fail
 STATUS=$(curl_json GET /customer/current -H "token: $CUST1_TOKEN")
-assert "Expired token → 400" 400 "$STATUS"
+assert "Expired token → 403" 403 "$STATUS"
 
 # 12.3 Logout customer2
 STATUS=$(curl_json POST /logout/customer -d "{\"token\":\"$CUST2_TOKEN\"}")
@@ -892,7 +926,7 @@ assert "GET /product/99999 (not found) → 404" 404 "$STATUS"
 
 # 13.2 Invalid category enum
 STATUS=$(curl_json GET /products/INVALID_CATEGORY)
-assert "GET /products/INVALID_CATEGORY → 400 or 500" 500 "$STATUS"
+assert "GET /products/INVALID_CATEGORY → 400" 400 "$STATUS"
 
 # 13.3 No token header → 400
 STATUS=$(curl_json GET /customer/current)
@@ -900,7 +934,7 @@ assert "GET /customer/current (no token) → 400" 400 "$STATUS"
 
 # 13.4 Invalid token string
 STATUS=$(curl_json GET /cart -H "token: invalid-token-xyz")
-assert "GET /cart (invalid token) → 400" 400 "$STATUS"
+assert "GET /cart (invalid token) → 403" 403 "$STATUS"
 
 # 13.5 Add product with missing required fields
 STATUS=$(curl_json POST /products \

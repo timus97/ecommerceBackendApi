@@ -19,10 +19,10 @@ import com.masai.dto.ReviewRequestDTO;
 import com.masai.dto.ReviewResponseDTO;
 import com.masai.dto.ReviewSummaryDTO;
 import com.masai.models.UserSession;
-import com.masai.repository.CustomerDao;
-import com.masai.repository.ProductDao;
-import com.masai.repository.ReviewDao;
-import com.masai.repository.SessionDao;
+import com.masai.repository.CustomerRepository;
+import com.masai.repository.ProductRepository;
+import com.masai.repository.ReviewRepository;
+import com.masai.util.TokenValidationUtil;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -33,45 +33,42 @@ import org.springframework.transaction.annotation.Transactional;
 public class ReviewServiceImpl implements ReviewService {
 
     @Autowired
-    private ReviewDao reviewDao;
+    private ReviewRepository reviewRepository;
 
     @Autowired
-    private ProductDao productDao;
+    private ProductRepository productRepository;
 
     @Autowired
-    private CustomerDao customerDao;
+    private CustomerRepository customerRepository;
 
     @Autowired
-    private SessionDao sessionDao;
-
-    @Autowired
-    private LoginLogoutService loginService;
+    private TokenValidationUtil tokenValidationUtil;
 
     @Override
     @Transactional
     public ReviewResponseDTO addReview(ReviewRequestDTO reviewRequest, String token) throws ReviewException, LoginException {
         // 1. Token validation (customer only)
-        if (token == null || !token.contains("customer")) {
-            throw new LoginException("Invalid session token for customer");
-        }
-        loginService.checkTokenStatus(token);
+        UserSession userSession = tokenValidationUtil.validateCustomerToken(token);
 
         // 2. Get logged-in customer
-        UserSession userSession = sessionDao.findByToken(token)
-            .orElseThrow(() -> new LoginException("Invalid or expired session token"));
-        Customer customer = customerDao.findById(userSession.getUserId())
+        Customer customer = customerRepository.findById(userSession.getUserId())
             .orElseThrow(() -> new ReviewException("Customer not found"));
 
         // 3. Validate product exists
-        Product product = productDao.findById(reviewRequest.getProductId())
+        Product product = productRepository.findById(reviewRequest.getProductId())
             .orElseThrow(() -> new ReviewException("Product not found with ID: " + reviewRequest.getProductId()));
 
-        // 4. Duplicate check (service + DB constraint)
-        if (reviewDao.existsByCustomerAndProduct(customer, product)) {
+        // 4. Validate rating range (1-5)
+        if (reviewRequest.getRating() == null || reviewRequest.getRating() < 1 || reviewRequest.getRating() > 5) {
+            throw new ReviewException("Rating must be between 1 and 5");
+        }
+
+        // 5. Duplicate check (service + DB constraint)
+        if (reviewRepository.existsByCustomerAndProduct(customer, product)) {
             throw new ReviewException("You have already submitted a review for this product");
         }
 
-        // 5. Create entity from DTO
+        // 6. Create entity from DTO
         Review review = new Review();
         review.setRating(reviewRequest.getRating());
         review.setTitle(reviewRequest.getTitle());
@@ -85,7 +82,7 @@ public class ReviewServiceImpl implements ReviewService {
         review.setHelpfulCount(0);
 
         // 6. Save and map to response DTO
-        Review saved = reviewDao.save(review);
+        Review saved = reviewRepository.save(review);
         
         // Auto-recalculate Product rating stats
         recalculateAndUpdateProduct(saved.getProduct());
@@ -95,23 +92,23 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     @Transactional
-    public ReviewResponseDTO updateReview(Long reviewId, ReviewRequestDTO reviewRequest, String token) 
+    public ReviewResponseDTO updateReview(Long reviewId, ReviewRequestDTO reviewRequest, String token)
             throws ReviewException, LoginException {
         // Token validation
-        if (token == null || !token.contains("customer")) {
-            throw new LoginException("Invalid session token for customer");
-        }
-        loginService.checkTokenStatus(token);
+        UserSession userSession = tokenValidationUtil.validateCustomerToken(token);
 
         // Find review
-        Review review = reviewDao.findById(reviewId)
+        Review review = reviewRepository.findById(reviewId)
             .orElseThrow(() -> new ReviewException("Review not found with ID: " + reviewId));
 
         // Ownership check (only owner can update)
-        UserSession userSession = sessionDao.findByToken(token)
-            .orElseThrow(() -> new LoginException("Invalid session"));
         if (!review.getCustomer().getCustomerId().equals(userSession.getUserId())) {
             throw new ReviewException("You can only update your own reviews");
+        }
+
+        // Validate rating range (1-5)
+        if (reviewRequest.getRating() != null && (reviewRequest.getRating() < 1 || reviewRequest.getRating() > 5)) {
+            throw new ReviewException("Rating must be between 1 and 5");
         }
 
         // Update fields
@@ -120,7 +117,7 @@ public class ReviewServiceImpl implements ReviewService {
         review.setComment(reviewRequest.getComment());
         review.setUpdatedAt(LocalDateTime.now());
 
-        Review updated = reviewDao.save(review);
+        Review updated = reviewRepository.save(review);
         
         // Auto-recalculate Product rating stats
         recalculateAndUpdateProduct(updated.getProduct());
@@ -132,18 +129,13 @@ public class ReviewServiceImpl implements ReviewService {
     @Transactional
     public ReviewResponseDTO deleteReview(Long reviewId, String token) throws ReviewException, LoginException {
         // Token validation
-        if (token == null || !token.contains("customer")) {
-            throw new LoginException("Invalid session token for customer");
-        }
-        loginService.checkTokenStatus(token);
+        UserSession userSession = tokenValidationUtil.validateCustomerToken(token);
 
         // Find review
-        Review review = reviewDao.findById(reviewId)
+        Review review = reviewRepository.findById(reviewId)
             .orElseThrow(() -> new ReviewException("Review not found with ID: " + reviewId));
 
         // Ownership check
-        UserSession userSession = sessionDao.findByToken(token)
-            .orElseThrow(() -> new LoginException("Invalid session"));
         if (!review.getCustomer().getCustomerId().equals(userSession.getUserId())) {
             throw new ReviewException("You can only delete your own reviews");
         }
@@ -151,7 +143,7 @@ public class ReviewServiceImpl implements ReviewService {
         // Soft delete
         review.setIsDeleted(true);
         review.setUpdatedAt(LocalDateTime.now());
-        Review deleted = reviewDao.save(review);
+        Review deleted = reviewRepository.save(review);
         
         // Auto-recalculate Product rating stats
         recalculateAndUpdateProduct(deleted.getProduct());
@@ -162,7 +154,7 @@ public class ReviewServiceImpl implements ReviewService {
     @Override
     public Page<ReviewResponseDTO> getProductReviews(Integer productId, Pageable pageable) {
         // Get approved + non-deleted reviews (paginated)
-        Page<Review> reviewsPage = reviewDao.findByProductIdAndIsApprovedTrue(productId, pageable);
+        Page<Review> reviewsPage = reviewRepository.findByProductIdAndIsApprovedTrue(productId, pageable);
         return reviewsPage.map(this::mapToResponseDTO);
     }
 
@@ -170,19 +162,16 @@ public class ReviewServiceImpl implements ReviewService {
     @Transactional
     public ReviewResponseDTO approveReview(Long reviewId, String token) throws ReviewException, LoginException {
         // Token validation (assume seller/admin; simple check for now)
-        if (token == null) {
-            throw new LoginException("Invalid session token");
-        }
-        loginService.checkTokenStatus(token);
+        tokenValidationUtil.validateSellerToken(token);
 
         // Find review
-        Review review = reviewDao.findById(reviewId)
+        Review review = reviewRepository.findById(reviewId)
             .orElseThrow(() -> new ReviewException("Review not found with ID: " + reviewId));
 
         // Approve
         review.setIsApproved(true);
         review.setUpdatedAt(LocalDateTime.now());
-        Review approved = reviewDao.save(review);
+        Review approved = reviewRepository.save(review);
         
         // Auto-recalculate Product rating stats (approve affects avg)
         recalculateAndUpdateProduct(approved.getProduct());
@@ -193,8 +182,8 @@ public class ReviewServiceImpl implements ReviewService {
     @Override
     public ReviewSummaryDTO calculateProductRating(Integer productId) {
         // Use custom query for average + count
-        Double avg = reviewDao.calculateAverageRating(productId);
-        long count = reviewDao.countByProductId(productId);
+        Double avg = reviewRepository.calculateAverageRating(productId);
+        long count = reviewRepository.countByProductId(productId);
         return new ReviewSummaryDTO(avg != null ? avg : 0.0, count, productId);
     }
 
@@ -220,6 +209,6 @@ public class ReviewServiceImpl implements ReviewService {
         ReviewSummaryDTO summary = calculateProductRating(product.getProductId());
         product.setAverageRating(summary.getAverageRating());
         product.setReviewCount(summary.getTotalReviews());
-        productDao.save(product);
+        productRepository.save(product);
     }
 }

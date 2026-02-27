@@ -20,10 +20,11 @@ import com.masai.models.Seller;
 import com.masai.dto.SellerDTO;
 import com.masai.dto.SessionDTO;
 import com.masai.models.UserSession;
-import com.masai.repository.CustomerDao;
-import com.masai.repository.SellerDao;
-import com.masai.repository.SessionDao;
+import com.masai.repository.CustomerRepository;
+import com.masai.repository.SellerRepository;
+import com.masai.repository.SessionRepository;
 import com.masai.util.PasswordEncoderUtil;
+import com.masai.util.TokenValidationUtil;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -34,16 +35,19 @@ import static org.mockito.ArgumentMatchers.*;
 class LoginLogoutServiceImplTest {
 
     @Mock
-    private SessionDao sessionDao;
+    private SessionRepository sessionRepository;
 
     @Mock
-    private CustomerDao customerDao;
+    private CustomerRepository customerRepository;
 
     @Mock
-    private SellerDao sellerDao;
+    private SellerRepository sellerRepository;
 
     @Mock
     private PasswordEncoderUtil passwordEncoderUtil;
+
+    @Mock
+    private TokenValidationUtil tokenValidationUtil;
 
     @InjectMocks
     private LoginLogoutServiceImpl loginLogoutService;
@@ -73,23 +77,23 @@ class LoginLogoutServiceImplTest {
     @Test
     @DisplayName("Should login customer successfully")
     void testLoginCustomerSuccess() {
-        when(customerDao.findByMobileNo("9876543210")).thenReturn(Optional.of(testCustomer));
-        when(sessionDao.findByUserId(1)).thenReturn(Optional.empty());
+        when(customerRepository.findByMobileNo("9876543210")).thenReturn(Optional.of(testCustomer));
+        when(sessionRepository.findByUserId(1)).thenReturn(Optional.empty());
         when(passwordEncoderUtil.matchesPassword("TestPassword123", testCustomer.getPassword())).thenReturn(true);
-        when(sessionDao.save(any(UserSession.class))).thenReturn(testSession);
+        when(sessionRepository.save(any(UserSession.class))).thenReturn(testSession);
 
         UserSession result = loginLogoutService.loginCustomer(testCustomerDTO);
 
         assertNotNull(result);
         assertEquals(1, result.getUserId());
-        verify(customerDao, times(1)).findByMobileNo("9876543210");
-        verify(sessionDao, times(1)).save(any(UserSession.class));
+        verify(customerRepository, times(1)).findByMobileNo("9876543210");
+        verify(sessionRepository, times(1)).save(any(UserSession.class));
     }
 
     @Test
     @DisplayName("Should throw exception for customer not found")
     void testLoginCustomerNotFound() {
-        when(customerDao.findByMobileNo("9876543210")).thenReturn(Optional.empty());
+        when(customerRepository.findByMobileNo("9876543210")).thenReturn(Optional.empty());
 
         assertThrows(CustomerNotFoundException.class, () -> {
             loginLogoutService.loginCustomer(testCustomerDTO);
@@ -99,8 +103,8 @@ class LoginLogoutServiceImplTest {
     @Test
     @DisplayName("Should throw exception for incorrect password")
     void testLoginCustomerIncorrectPassword() {
-        when(customerDao.findByMobileNo("9876543210")).thenReturn(Optional.of(testCustomer));
-        when(sessionDao.findByUserId(1)).thenReturn(Optional.empty());
+        when(customerRepository.findByMobileNo("9876543210")).thenReturn(Optional.of(testCustomer));
+        when(sessionRepository.findByUserId(1)).thenReturn(Optional.empty());
         when(passwordEncoderUtil.matchesPassword(anyString(), anyString())).thenReturn(false);
 
         assertThrows(LoginException.class, () -> {
@@ -111,8 +115,8 @@ class LoginLogoutServiceImplTest {
     @Test
     @DisplayName("Should throw exception when customer already logged in")
     void testLoginCustomerAlreadyLoggedIn() {
-        when(customerDao.findByMobileNo("9876543210")).thenReturn(Optional.of(testCustomer));
-        when(sessionDao.findByUserId(1)).thenReturn(Optional.of(testSession));
+        when(customerRepository.findByMobileNo("9876543210")).thenReturn(Optional.of(testCustomer));
+        when(sessionRepository.findByUserId(1)).thenReturn(Optional.of(testSession));
 
         assertThrows(LoginException.class, () -> {
             loginLogoutService.loginCustomer(testCustomerDTO);
@@ -125,20 +129,20 @@ class LoginLogoutServiceImplTest {
         SessionDTO sessionDTO = new SessionDTO();
         sessionDTO.setToken("customer_abc123");
 
-        when(sessionDao.findByToken("customer_abc123")).thenReturn(Optional.of(testSession));
-        doNothing().when(sessionDao).delete(testSession);
+        when(tokenValidationUtil.validateCustomerToken("customer_abc123")).thenReturn(testSession);
+        doNothing().when(sessionRepository).delete(testSession);
 
         SessionDTO result = loginLogoutService.logoutCustomer(sessionDTO);
 
         assertNotNull(result);
         assertEquals("Logged out sucessfully.", result.getMessage());
-        verify(sessionDao, times(1)).delete(testSession);
+        verify(sessionRepository, times(1)).delete(testSession);
     }
 
     @Test
     @DisplayName("Should check token status successfully")
     void testCheckTokenStatusSuccess() {
-        when(sessionDao.findByToken("customer_abc123")).thenReturn(Optional.of(testSession));
+        when(tokenValidationUtil.validateTokenAndGetSession("customer_abc123")).thenReturn(testSession);
 
         assertDoesNotThrow(() -> {
             loginLogoutService.checkTokenStatus("customer_abc123");
@@ -148,7 +152,8 @@ class LoginLogoutServiceImplTest {
     @Test
     @DisplayName("Should throw exception for invalid token")
     void testCheckTokenStatusInvalidToken() {
-        when(sessionDao.findByToken("invalid_token")).thenReturn(Optional.empty());
+        when(tokenValidationUtil.validateTokenAndGetSession("invalid_token"))
+            .thenThrow(new LoginException("Invalid or expired session token"));
 
         assertThrows(LoginException.class, () -> {
             loginLogoutService.checkTokenStatus("invalid_token");
@@ -158,11 +163,8 @@ class LoginLogoutServiceImplTest {
     @Test
     @DisplayName("Should throw exception for expired token")
     void testCheckTokenStatusExpiredToken() {
-        UserSession expiredSession = new UserSession();
-        expiredSession.setSessionEndTime(LocalDateTime.now().minusHours(1));
-
-        when(sessionDao.findByToken("expired_token")).thenReturn(Optional.of(expiredSession));
-        doNothing().when(sessionDao).delete(expiredSession);
+        when(tokenValidationUtil.validateTokenAndGetSession("expired_token"))
+            .thenThrow(new LoginException("Session expired. Login Again"));
 
         assertThrows(LoginException.class, () -> {
             loginLogoutService.checkTokenStatus("expired_token");
@@ -175,13 +177,13 @@ class LoginLogoutServiceImplTest {
         UserSession expiredSession = new UserSession();
         expiredSession.setSessionEndTime(LocalDateTime.now().minusHours(1));
 
-        when(sessionDao.findAll()).thenReturn(java.util.Arrays.asList(expiredSession));
-        doNothing().when(sessionDao).delete(expiredSession);
+        when(sessionRepository.findAll()).thenReturn(java.util.Arrays.asList(expiredSession));
+        doNothing().when(sessionRepository).delete(expiredSession);
 
         assertDoesNotThrow(() -> {
             loginLogoutService.deleteExpiredTokens();
         });
 
-        verify(sessionDao, times(1)).delete(expiredSession);
+        verify(sessionRepository, times(1)).delete(expiredSession);
     }
 }

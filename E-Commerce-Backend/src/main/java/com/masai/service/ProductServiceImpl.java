@@ -10,7 +10,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.masai.exception.CategoryNotFoundException;
 import com.masai.exception.ProductNotFoundException;
@@ -21,21 +20,21 @@ import com.masai.dto.ProductSearchFilterDTO;
 import com.masai.dto.ProductSearchResponseDTO;
 import com.masai.models.ProductStatus;
 import com.masai.models.Seller;
-import com.masai.repository.ProductDao;
-import com.masai.repository.SellerDao;
+import com.masai.repository.ProductRepository;
+import com.masai.repository.SellerRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ProductServiceImpl implements ProductService {
 
 	@Autowired
-	private ProductDao prodDao;
+	private ProductRepository productRepository;
 
 	@Autowired
 	private SellerService sService;
 
 	@Autowired
-	private SellerDao sDao;
+	private SellerRepository sellerRepository;
 
 	@Override
 	@Transactional
@@ -46,21 +45,21 @@ public class ProductServiceImpl implements ProductService {
 		product.setSeller(seller1);
 
 		Seller Existingseller = sService.getSellerByMobile(product.getSeller().getMobile(), token);
-		Optional<Seller> opt = sDao.findById(Existingseller.getSellerId());
+		Optional<Seller> opt = sellerRepository.findById(Existingseller.getSellerId());
 
 		if (opt.isPresent()) {
 			Seller seller = opt.get();
 
 			product.setSeller(seller);
 
-			prod = prodDao.save(product);
+			prod = productRepository.save(product);
 			;
 
 			seller.getProduct().add(product);
-			sDao.save(seller);
+			sellerRepository.save(seller);
 
 		} else {
-			prod = prodDao.save(product);
+			prod = productRepository.save(product);
 			;
 		}
 
@@ -70,7 +69,7 @@ public class ProductServiceImpl implements ProductService {
 	@Override
 	public Product getProductFromCatalogById(Integer id) throws ProductNotFoundException {
 
-		Optional<Product> opt = prodDao.findById(id);
+		Optional<Product> opt = productRepository.findById(id);
 		if (opt.isPresent()) {
 			return opt.get();
 		}
@@ -82,11 +81,11 @@ public class ProductServiceImpl implements ProductService {
 	@Override
 	@Transactional
 	public String deleteProductFromCatalog(Integer id) throws ProductNotFoundException {
-		Optional<Product> opt = prodDao.findById(id);
+		Optional<Product> opt = productRepository.findById(id);
 		
 		if (opt.isPresent()) {
 			Product prod = opt.get();
-			prodDao.delete(prod);
+			productRepository.delete(prod);
 			return "Product deleted from catalog";
 		} else
 			throw new ProductNotFoundException("Product not found with given id");
@@ -97,11 +96,11 @@ public class ProductServiceImpl implements ProductService {
 	@Transactional
 	public Product updateProductIncatalog(Product prod) throws ProductNotFoundException {
 
-		Optional<Product> opt = prodDao.findById(prod.getProductId());
+		Optional<Product> opt = productRepository.findById(prod.getProductId());
 
 		if (opt.isPresent()) {
 			opt.get();
-			Product prod1 = prodDao.save(prod);
+			Product prod1 = productRepository.save(prod);
 			return prod1;
 		} else
 			throw new ProductNotFoundException("Product not found with given id");
@@ -109,7 +108,7 @@ public class ProductServiceImpl implements ProductService {
 
 	@Override
 	public List<Product> getAllProductsIncatalog() {
-		List<Product> list = prodDao.findAll();
+		List<Product> list = productRepository.findAll();
 		
 		if (list.size() > 0) {
 			return list;
@@ -121,7 +120,7 @@ public class ProductServiceImpl implements ProductService {
 	@Override
 	public List<ProductDTO> getProductsOfCategory(CategoryEnum catenum) {
 
-		List<ProductDTO> list = prodDao.getAllProductsInACategory(catenum);
+		List<ProductDTO> list = productRepository.getAllProductsInACategory(catenum);
 		if (list.size() > 0) {
 
 			return list;
@@ -132,7 +131,7 @@ public class ProductServiceImpl implements ProductService {
 	@Override
 	public List<ProductDTO> getProductsOfStatus(ProductStatus status) {
 
-		List<ProductDTO> list = prodDao.getProductsWithStatus(status);
+		List<ProductDTO> list = productRepository.getProductsWithStatus(status);
 
 		if (list.size() > 0) {
 			return list;
@@ -144,7 +143,7 @@ public class ProductServiceImpl implements ProductService {
 	@Transactional
 	public Product updateProductQuantityWithId(Integer id,ProductDTO prodDto) {
 		Product prod = null;
-		 Optional<Product> opt = prodDao.findById(id);
+		 Optional<Product> opt = productRepository.findById(id);
 		 
 		 if(opt!=null) {
 			  prod = opt.get();
@@ -152,7 +151,7 @@ public class ProductServiceImpl implements ProductService {
 			 if(prod.getQuantity()>0) {
 				 prod.setStatus(ProductStatus.AVAILABLE);
 			 }
-			 prodDao.save(prod);
+			 productRepository.save(prod);
 			 
 		 }
 		 else
@@ -166,7 +165,7 @@ public class ProductServiceImpl implements ProductService {
 	@Override
 	public List<ProductDTO> getAllProductsOfSeller(Integer id) {
 		
-		List<ProductDTO> list = prodDao.getProductsOfASeller(id);
+		List<ProductDTO> list = productRepository.getProductsOfASeller(id);
 		
 		if(list.size()>0) {
 			
@@ -194,7 +193,7 @@ public class ProductServiceImpl implements ProductService {
 		Pageable pageable = PageRequest.of(page, size);
 		
 		// Call the repository method with all filter parameters
-		Page<ProductSearchResponseDTO> results = prodDao.searchAndFilterProducts(
+		Page<ProductSearchResponseDTO> results = productRepository.searchAndFilterProducts(
 				filterDTO.getKeyword(),
 				filterDTO.getCategory(),
 				filterDTO.getStatus(),

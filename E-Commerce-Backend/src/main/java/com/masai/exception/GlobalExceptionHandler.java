@@ -19,7 +19,7 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(ProductNotFoundException.class)
 	public ResponseEntity<ErrorDetails> productNotFound(ProductNotFoundException pnf,WebRequest wr){
 		ErrorDetails err = new ErrorDetails(LocalDateTime.now(),pnf.getMessage(),wr.getDescription(false));
-		return new ResponseEntity<>(err, HttpStatus.BAD_REQUEST);
+		return new ResponseEntity<>(err, HttpStatus.NOT_FOUND);
 	}
 	
 	@ExceptionHandler(CartItemNotFound.class)
@@ -31,10 +31,7 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(CategoryNotFoundException.class)
 	public ResponseEntity<ErrorDetails> categoryNotFound(CategoryNotFoundException cnf, WebRequest wr){
 		ErrorDetails err = new ErrorDetails(LocalDateTime.now(),cnf.getMessage(), wr.getDescription(false));
-		
-		return new ResponseEntity<ErrorDetails>(err,HttpStatus.NO_CONTENT);
-		
-		
+		return new ResponseEntity<ErrorDetails>(err, HttpStatus.BAD_REQUEST);
 	}
 	
 	@ExceptionHandler(SellerException.class)
@@ -60,7 +57,7 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(CustomerException.class)
 	public ResponseEntity<ErrorDetails> customerExceptionHandler(CustomerException ce, WebRequest wr){
 		ErrorDetails err = new ErrorDetails(LocalDateTime.now(), ce.getMessage(), wr.getDescription(false));
-		return new ResponseEntity<>(err, HttpStatus.FORBIDDEN);
+		return new ResponseEntity<>(err, HttpStatus.BAD_REQUEST);
 	}
 	
 	
@@ -103,7 +100,7 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ErrorDetails> methodArgumentNotValidExceptionHandler(MethodArgumentNotValidException manv, WebRequest wr){
 		String message = manv.getBindingResult().getFieldError().getDefaultMessage();
 		ErrorDetails err = new ErrorDetails(LocalDateTime.now(), message, wr.getDescription(false));
-		return new ResponseEntity<ErrorDetails>(err, HttpStatus.FORBIDDEN);
+		return new ResponseEntity<ErrorDetails>(err, HttpStatus.BAD_REQUEST);
 	}
 	
 	

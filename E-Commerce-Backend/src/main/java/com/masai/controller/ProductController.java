@@ -25,7 +25,6 @@ import com.masai.dto.ProductSearchFilterDTO;
 import com.masai.models.ProductStatus;
 import com.masai.service.ProductService;
 
-import io.swagger.v3.oas.models.security.SecurityScheme.In;
 
 @RestController
 public class ProductController {

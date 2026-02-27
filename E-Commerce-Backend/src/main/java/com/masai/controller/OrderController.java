@@ -22,14 +22,10 @@ import org.springframework.web.bind.annotation.RestController;
 import com.masai.models.Customer;
 import com.masai.models.Order;
 import com.masai.dto.OrderDTO;
-import com.masai.repository.OrderDao;
 import com.masai.service.OrderService;
 
 @RestController
 public class OrderController {
-	@Autowired
-	private OrderDao oDao;
-	
 	@Autowired
 	private OrderService oService;
 	

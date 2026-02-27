@@ -22,26 +22,26 @@ import com.masai.models.Order;
 import com.masai.dto.SessionDTO;
 import com.masai.models.UserSession;
 import com.masai.models.Wishlist;
-import com.masai.repository.CustomerDao;
-import com.masai.repository.SessionDao;
-import com.masai.repository.WishlistDao;
+import com.masai.repository.CustomerRepository;
+import com.masai.repository.WishlistRepository;
 import com.masai.util.PasswordEncoderUtil;
+import com.masai.util.TokenValidationUtil;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CustomerServiceImpl implements CustomerService{
 	
 	@Autowired
-	private CustomerDao customerDao;
+	private CustomerRepository customerRepository;
 	
 	@Autowired
 	private LoginLogoutService loginService;
 	
 	@Autowired
-	private SessionDao sessionDao;
+	private TokenValidationUtil tokenValidationUtil;
 
 	@Autowired
-	private WishlistDao wishlistDao;
+	private WishlistRepository wishlistRepository;
 	
 	@Autowired
 	private PasswordEncoderUtil passwordEncoderUtil;
@@ -68,12 +68,12 @@ public class CustomerServiceImpl implements CustomerService{
 		
 		customer.setOrders(new ArrayList<Order>());
 
-		Optional<Customer> existing = customerDao.findByMobileNo(customer.getMobileNo());
+		Optional<Customer> existing = customerRepository.findByMobileNo(customer.getMobileNo());
 		
 		if(existing.isPresent())
 			throw new CustomerException("Customer already exists. Please try to login with your mobile no");
 		
-		customerDao.save(customer);
+		customerRepository.save(customer);
 		
 		return customer;
 	}
@@ -85,20 +85,10 @@ public class CustomerServiceImpl implements CustomerService{
 	@Override
 	public Customer getLoggedInCustomerDetails(String token){
 		
-		if(token.contains("customer") == false) {
-			throw new LoginException("Invalid session token for customer");
-		}
+		UserSession user = tokenValidationUtil.validateCustomerToken(token);
 		
-		loginService.checkTokenStatus(token);
-		
-		UserSession user = sessionDao.findByToken(token).get();
-		
-		Optional<Customer> opt = customerDao.findById(user.getUserId());
-		
-		if(opt.isEmpty())
-			throw new CustomerNotFoundException("Customer does not exist");
-		
-		Customer existingCustomer = opt.get();
+		Customer existingCustomer = customerRepository.findById(user.getUserId())
+				.orElseThrow(() -> new CustomerNotFoundException("Customer does not exist"));
 		
 		return existingCustomer;
 	}
@@ -113,13 +103,9 @@ public class CustomerServiceImpl implements CustomerService{
 		
 		// update to seller
 		
-		if(token.contains("seller") == false) {
-			throw new LoginException("Invalid session token.");
-		}
+		tokenValidationUtil.validateSellerToken(token);
 		
-		loginService.checkTokenStatus(token);
-		
-		List<Customer> customers = customerDao.findAll();
+		List<Customer> customers = customerRepository.findAll();
 		
 		if(customers.size() == 0)
 			throw new CustomerNotFoundException("No record exists");
@@ -134,16 +120,11 @@ public class CustomerServiceImpl implements CustomerService{
 	@Transactional
 	public Customer updateCustomer(CustomerUpdateDTO customer, String token) throws CustomerNotFoundException {
 		
+		UserSession user = tokenValidationUtil.validateCustomerToken(token);
 		
-		if(token.contains("customer") == false) {
-			throw new LoginException("Invalid session token for customer");
-		}
+		Optional<Customer> opt = customerRepository.findByMobileNo(customer.getMobileNo());
 		
-		loginService.checkTokenStatus(token);
-		
-		Optional<Customer> opt = customerDao.findByMobileNo(customer.getMobileNo());
-		
-		Optional<Customer> res = customerDao.findByEmailId(customer.getEmailId());
+		Optional<Customer> res = customerRepository.findByEmailId(customer.getEmailId());
 		
 		if(opt.isEmpty() && res.isEmpty())
 			throw new CustomerNotFoundException("Customer does not exist with given mobile no or email-id");
@@ -154,8 +135,6 @@ public class CustomerServiceImpl implements CustomerService{
 			existingCustomer = opt.get();
 		else
 			existingCustomer = res.get();
-		
-		UserSession user = sessionDao.findByToken(token).get();
 		
 		if(existingCustomer.getCustomerId() == user.getUserId()) {
 		
@@ -187,7 +166,7 @@ public class CustomerServiceImpl implements CustomerService{
 				}
 			}
 			
-			customerDao.save(existingCustomer);
+			customerRepository.save(existingCustomer);
 			return existingCustomer;
 		
 		}
@@ -205,20 +184,10 @@ public class CustomerServiceImpl implements CustomerService{
 	@Transactional
 	public Customer updateCustomerMobileNoOrEmailId(CustomerUpdateDTO customerUpdateDTO, String token) throws CustomerNotFoundException {
 		
-		if(token.contains("customer") == false) {
-			throw new LoginException("Invalid session token for customer");
-		}
+		UserSession user = tokenValidationUtil.validateCustomerToken(token);
 		
-		loginService.checkTokenStatus(token);
-		
-		UserSession user = sessionDao.findByToken(token).get();
-		
-		Optional<Customer> opt = customerDao.findById(user.getUserId());
-		
-		if(opt.isEmpty())
-			throw new CustomerNotFoundException("Customer does not exist");
-		
-		Customer existingCustomer = opt.get();
+		Customer existingCustomer = customerRepository.findById(user.getUserId())
+				.orElseThrow(() -> new CustomerNotFoundException("Customer does not exist"));
 		
 		if(customerUpdateDTO.getEmailId() != null) {
 			existingCustomer.setEmailId(customerUpdateDTO.getEmailId());
@@ -227,7 +196,7 @@ public class CustomerServiceImpl implements CustomerService{
 		
 		existingCustomer.setMobileNo(customerUpdateDTO.getMobileNo());
 			
-		customerDao.save(existingCustomer);
+		customerRepository.save(existingCustomer);
 			
 		return existingCustomer;
 		
@@ -239,22 +208,10 @@ public class CustomerServiceImpl implements CustomerService{
 	@Transactional
 	public SessionDTO updateCustomerPassword(CustomerDTO customerDTO, String token) {
 		
+		UserSession user = tokenValidationUtil.validateCustomerToken(token);
 		
-		if(token.contains("customer") == false) {
-			throw new LoginException("Invalid session token for customer");
-		}
-			
-		
-		loginService.checkTokenStatus(token);
-		
-		UserSession user = sessionDao.findByToken(token).get();
-		
-		Optional<Customer> opt = customerDao.findById(user.getUserId());
-		
-		if(opt.isEmpty())
-			throw new CustomerNotFoundException("Customer does not exist");
-		
-		Customer existingCustomer = opt.get();
+		Customer existingCustomer = customerRepository.findById(user.getUserId())
+				.orElseThrow(() -> new CustomerNotFoundException("Customer does not exist"));
 		
 		
 		if(customerDTO.getMobileId().equals(existingCustomer.getMobileNo()) == false) {
@@ -265,7 +222,7 @@ public class CustomerServiceImpl implements CustomerService{
 	String hashedPassword = passwordEncoderUtil.encodePassword(customerDTO.getPassword());
 	existingCustomer.setPassword(hashedPassword);
 		
-		customerDao.save(existingCustomer);
+		customerRepository.save(existingCustomer);
 		
 		SessionDTO session = new SessionDTO();
 		
@@ -286,24 +243,15 @@ public class CustomerServiceImpl implements CustomerService{
 	@Override
 	@Transactional
 	public Customer updateAddress(Address address, String type, String token) throws CustomerException {
-		if(token.contains("customer") == false) {
-			throw new LoginException("Invalid session token for customer");
-		}
-			
-		loginService.checkTokenStatus(token);
 		
-		UserSession user = sessionDao.findByToken(token).get();
+		UserSession user = tokenValidationUtil.validateCustomerToken(token);
 		
-		Optional<Customer> opt = customerDao.findById(user.getUserId());
-		
-		if(opt.isEmpty())
-			throw new CustomerNotFoundException("Customer does not exist");
-		
-		Customer existingCustomer = opt.get();
+		Customer existingCustomer = customerRepository.findById(user.getUserId())
+				.orElseThrow(() -> new CustomerNotFoundException("Customer does not exist"));
 		
 		existingCustomer.getAddress().put(type, address);
 		
-		return customerDao.save(existingCustomer);
+		return customerRepository.save(existingCustomer);
 		
 	}
 	
@@ -314,24 +262,14 @@ public class CustomerServiceImpl implements CustomerService{
 	@Transactional
 	public Customer updateCreditCardDetails(String token, CreditCard card) throws CustomerException{
 		
-		if(token.contains("customer") == false) {
-			throw new LoginException("Invalid session token for customer");
-		}
+		UserSession user = tokenValidationUtil.validateCustomerToken(token);
 		
-		loginService.checkTokenStatus(token);
-		
-		UserSession user = sessionDao.findByToken(token).get();
-		
-		Optional<Customer> opt = customerDao.findById(user.getUserId());
-		
-		if(opt.isEmpty())
-			throw new CustomerNotFoundException("Customer does not exist");
-		
-		Customer existingCustomer = opt.get();
+		Customer existingCustomer = customerRepository.findById(user.getUserId())
+				.orElseThrow(() -> new CustomerNotFoundException("Customer does not exist"));
 		
 		existingCustomer.setCreditCard(card);
 		
-		return customerDao.save(existingCustomer);
+		return customerRepository.save(existingCustomer);
 	}
 	
 	
@@ -342,20 +280,10 @@ public class CustomerServiceImpl implements CustomerService{
 	@Transactional
 	public SessionDTO deleteCustomer(CustomerDTO customerDTO, String token) throws CustomerNotFoundException {
 		
-		if(token.contains("customer") == false) {
-			throw new LoginException("Invalid session token for customer");
-		}
+		UserSession user = tokenValidationUtil.validateCustomerToken(token);
 		
-		loginService.checkTokenStatus(token);
-		
-		UserSession user = sessionDao.findByToken(token).get();
-		
-		Optional<Customer> opt = customerDao.findById(user.getUserId());
-		
-		if(opt.isEmpty())
-			throw new CustomerNotFoundException("Customer does not exist");
-		
-		Customer existingCustomer = opt.get();
+		Customer existingCustomer = customerRepository.findById(user.getUserId())
+				.orElseThrow(() -> new CustomerNotFoundException("Customer does not exist"));
 		
 		SessionDTO session = new SessionDTO();
 		
@@ -366,7 +294,7 @@ public class CustomerServiceImpl implements CustomerService{
 		if(existingCustomer.getMobileNo().equals(customerDTO.getMobileId()) 
 				&& passwordEncoderUtil.matchesPassword(customerDTO.getPassword(), existingCustomer.getPassword())) {
 			
-			customerDao.delete(existingCustomer);
+			customerRepository.delete(existingCustomer);
 			
 			loginService.logoutCustomer(session);
 			
@@ -386,27 +314,17 @@ public class CustomerServiceImpl implements CustomerService{
 	@Transactional
 	public Customer deleteAddress(String type, String token) throws CustomerException, CustomerNotFoundException {
 		
-		if(token.contains("customer") == false) {
-			throw new LoginException("Invalid session token for customer");
-		}
+		UserSession user = tokenValidationUtil.validateCustomerToken(token);
 		
-		loginService.checkTokenStatus(token);
-		
-		UserSession user = sessionDao.findByToken(token).get();
-		
-		Optional<Customer> opt = customerDao.findById(user.getUserId());
-		
-		if(opt.isEmpty())
-			throw new CustomerNotFoundException("Customer does not exist");
-		
-		Customer existingCustomer = opt.get();
+		Customer existingCustomer = customerRepository.findById(user.getUserId())
+				.orElseThrow(() -> new CustomerNotFoundException("Customer does not exist"));
 		
 		if(existingCustomer.getAddress().containsKey(type) == false)
 			throw new CustomerException("Address type does not exist");
 		
 		existingCustomer.getAddress().remove(type);
 		
-		return customerDao.save(existingCustomer);
+		return customerRepository.save(existingCustomer);
 	}
 
 
@@ -414,20 +332,10 @@ public class CustomerServiceImpl implements CustomerService{
 	@Override
 	public List<Order> getCustomerOrders(String token) throws CustomerException {
 		
-		if(token.contains("customer") == false) {
-			throw new LoginException("Invalid session token for customer");
-		}
+		UserSession user = tokenValidationUtil.validateCustomerToken(token);
 		
-		loginService.checkTokenStatus(token);
-		
-		UserSession user = sessionDao.findByToken(token).get();
-		
-		Optional<Customer> opt = customerDao.findById(user.getUserId());
-		
-		if(opt.isEmpty())
-			throw new CustomerNotFoundException("Customer does not exist");
-		
-		Customer existingCustomer = opt.get();
+		Customer existingCustomer = customerRepository.findById(user.getUserId())
+				.orElseThrow(() -> new CustomerNotFoundException("Customer does not exist"));
 		
 		List<Order> myOrders = existingCustomer.getOrders();
 		

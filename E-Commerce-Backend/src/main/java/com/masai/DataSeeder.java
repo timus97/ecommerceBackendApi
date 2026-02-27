@@ -1,9 +1,9 @@
 package com.masai;
 
 import com.masai.models.*;
-import com.masai.repository.CustomerDao;
-import com.masai.repository.ProductDao;
-import com.masai.repository.SellerDao;
+import com.masai.repository.CustomerRepository;
+import com.masai.repository.ProductRepository;
+import com.masai.repository.SellerRepository;
 import com.masai.util.PasswordEncoderUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,9 +37,9 @@ public class DataSeeder implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);
 
-    @Autowired private SellerDao sellerDao;
-    @Autowired private CustomerDao customerDao;
-    @Autowired private ProductDao productDao;
+    @Autowired private SellerRepository sellerRepository;
+    @Autowired private CustomerRepository customerRepository;
+    @Autowired private ProductRepository productRepository;
     @Autowired private PasswordEncoderUtil passwordEncoderUtil;
 
     @Override
@@ -56,7 +56,7 @@ public class DataSeeder implements CommandLineRunner {
         seller1.setEmailId("ravi.sharma@techstore.com");
         seller1.setPassword(passwordEncoderUtil.encodePassword("Seller@123"));
         seller1.setProduct(new ArrayList<>());
-        sellerDao.save(seller1);
+        sellerRepository.save(seller1);
 
         Seller seller2 = new Seller();
         seller2.setFirstName("Priya");
@@ -65,7 +65,7 @@ public class DataSeeder implements CommandLineRunner {
         seller2.setEmailId("priya.nair@fashionhub.com");
         seller2.setPassword(passwordEncoderUtil.encodePassword("Seller@456"));
         seller2.setProduct(new ArrayList<>());
-        sellerDao.save(seller2);
+        sellerRepository.save(seller2);
 
         log.info("✔  Sellers seeded: {} and {}", seller1.getEmailId(), seller2.getEmailId());
 
@@ -115,11 +115,11 @@ public class DataSeeder implements CommandLineRunner {
                 "Extra-long grain aged basmati rice", "India Gate",
                 300, CategoryEnum.GROCERIES, ProductStatus.AVAILABLE, seller2);
 
-        productDao.save(p1); productDao.save(p2); productDao.save(p3);
-        productDao.save(p4); productDao.save(p5);
-        productDao.save(p6); productDao.save(p7);
-        productDao.save(p8);
-        productDao.save(p9); productDao.save(p10);
+        productRepository.save(p1); productRepository.save(p2); productRepository.save(p3);
+        productRepository.save(p4); productRepository.save(p5);
+        productRepository.save(p6); productRepository.save(p7);
+        productRepository.save(p8);
+        productRepository.save(p9); productRepository.save(p10);
 
         log.info("✔  Products seeded: 10 products across 5 categories");
 
@@ -133,7 +133,7 @@ public class DataSeeder implements CommandLineRunner {
                 "12A", "Sunrise Apartments", "Koramangala",
                 "Bangalore", "KARNATAKA", "560034");
         setupCreditCard(c1, "4111111111111111", "12/26", "123");
-        customerDao.save(c1);
+        customerRepository.save(c1);
 
         // Customer 2 – has address, no credit card (to test PENDING order flow)
         Customer c2 = buildCustomer("Sneha", "Patel",
@@ -146,14 +146,14 @@ public class DataSeeder implements CommandLineRunner {
         setupAddress(c2, "work",
                 "101", "Tech Park", "Whitefield",
                 "Bangalore", "KARNATAKA", "560066");
-        customerDao.save(c2);
+        customerRepository.save(c2);
 
         // Customer 3 – minimal setup for registration / login testing
         Customer c3 = buildCustomer("Rahul", "Singh",
                 "9345678012", "rahul.singh@gmail.com", passwordEncoderUtil.encodePassword("Rahul@9012"));
         setupCart(c3);
         setupWishlist(c3);
-        customerDao.save(c3);
+        customerRepository.save(c3);
 
         log.info("✔  Customers seeded:");
         log.info("     Customer 1: mobile=9123456780  password=Amit@1234  (address + card ready)");

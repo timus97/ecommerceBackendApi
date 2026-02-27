@@ -9,60 +9,44 @@ import org.springframework.stereotype.Service;
 
 import com.masai.exception.CartItemNotFound;
 import com.masai.exception.CustomerNotFoundException;
-import com.masai.exception.LoginException;
 import com.masai.models.Cart;
 import com.masai.dto.CartDTO;
 import com.masai.models.CartItem;
 import com.masai.models.Customer;
 import com.masai.models.UserSession;
-import com.masai.repository.CartDao;
-import com.masai.repository.CustomerDao;
-import com.masai.repository.ProductDao;
-import com.masai.repository.SessionDao;
+import com.masai.repository.CartRepository;
+import com.masai.repository.CustomerRepository;
+import com.masai.util.TokenValidationUtil;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CartServiceImpl implements CartService {
 
 	@Autowired
-	private CartDao cartDao;
+	private CartRepository cartRepository;
 	
 	@Autowired
-	private SessionDao sessionDao;
+	private TokenValidationUtil tokenValidationUtil;
 	
 	@Autowired
 	private CartItemService cartItemService;
 	
 	
 	@Autowired
-	private CustomerDao customerDao;
+	private CustomerRepository customerRepository;
 	
-	@Autowired
-	private LoginLogoutService loginService;
+
 	
 	
-	@Autowired
-	private ProductDao productDao;
 
 	@Override
 	@Transactional
 	public Cart addProductToCart(CartDTO cartDto, String token) {
 
+		UserSession user = tokenValidationUtil.validateCustomerToken(token);
 		
-		if(token.contains("customer") == false) {
-			throw new LoginException("Invalid session token for customer");
-		}
-		
-		loginService.checkTokenStatus(token);
-		
-		UserSession user = sessionDao.findByToken(token).get();
-		
-		Optional<Customer> opt = customerDao.findById(user.getUserId());
-		
-		if(opt.isEmpty())
-			throw new CustomerNotFoundException("Customer does not exist");
-		
-		Customer existingCustomer = opt.get();
+		Customer existingCustomer = customerRepository.findById(user.getUserId())
+				.orElseThrow(() -> new CustomerNotFoundException("Customer does not exist"));
 		
 		Cart customerCart = existingCustomer.getCustomerCart();
 		
@@ -90,7 +74,7 @@ public class CartServiceImpl implements CartService {
 			}
 		}
 		
-		return cartDao.save(existingCustomer.getCustomerCart());
+		return cartRepository.save(existingCustomer.getCustomerCart());
 		
 
 }
@@ -100,15 +84,9 @@ public class CartServiceImpl implements CartService {
 	@Override
 	public Cart getCartProduct(String token) {
 		
-		if(token.contains("customer") == false) {
-			throw new LoginException("Invalid session token for customer");
-		}
+		UserSession user = tokenValidationUtil.validateCustomerToken(token);
 		
-		loginService.checkTokenStatus(token);
-		
-		UserSession user = sessionDao.findByToken(token).get();
-		
-		Optional<Customer> opt = customerDao.findById(user.getUserId());
+		Optional<Customer> opt = customerRepository.findById(user.getUserId());
 		
 		
 		if(opt.isEmpty())
@@ -119,13 +97,8 @@ public class CartServiceImpl implements CartService {
 		Integer cartId = existingCustomer.getCustomerCart().getCartId();
 		
 		
-		Optional<Cart> optCart= cartDao.findById(cartId);
-		
-		if(optCart.isEmpty()) {
-			throw new CartItemNotFound("cart Not found by Id");
-		}
-		
-		return optCart.get();
+		return cartRepository.findById(cartId)
+				.orElseThrow(() -> new CartItemNotFound("cart Not found by Id"));
 	}
 
 	
@@ -133,20 +106,11 @@ public class CartServiceImpl implements CartService {
 	@Override
 	@Transactional
 	public Cart removeProductFromCart(CartDTO cartDto, String token) {
-		if(token.contains("customer") == false) {
-			throw new LoginException("Invalid session token for customer");
-		}
 		
-		loginService.checkTokenStatus(token);
+		UserSession user = tokenValidationUtil.validateCustomerToken(token);
 		
-		UserSession user = sessionDao.findByToken(token).get();
-		
-		Optional<Customer> opt = customerDao.findById(user.getUserId());
-		
-		if(opt.isEmpty())
-			throw new CustomerNotFoundException("Customer does not exist");
-		
-		Customer existingCustomer = opt.get();
+		Customer existingCustomer = customerRepository.findById(user.getUserId())
+				.orElseThrow(() -> new CustomerNotFoundException("Customer does not exist"));
 		
 		Cart customerCart = existingCustomer.getCustomerCart();
 		
@@ -169,7 +133,7 @@ public class CartServiceImpl implements CartService {
 					cartItems.remove(c);
 
 					
-					return cartDao.save(customerCart);
+					return cartRepository.save(customerCart);
 				}
 				flag = true;
 			}
@@ -180,31 +144,21 @@ public class CartServiceImpl implements CartService {
 		}
 		
 		if(cartItems.size() == 0) {
-			cartDao.save(customerCart);
+			cartRepository.save(customerCart);
 			throw new CartItemNotFound("Cart is empty now");
 		}
 		
-		return cartDao.save(customerCart);
+		return cartRepository.save(customerCart);
 	}
 	
 	@Override
 	@Transactional
 	public Cart clearCart(String token) {
 		
-		if(token.contains("customer") == false) {
-			throw new LoginException("Invalid session token for customer");
-		}
+		UserSession user = tokenValidationUtil.validateCustomerToken(token);
 		
-		loginService.checkTokenStatus(token);
-		
-		UserSession user = sessionDao.findByToken(token).get();
-		
-		Optional<Customer> opt = customerDao.findById(user.getUserId());
-		
-		if(opt.isEmpty())
-			throw new CustomerNotFoundException("Customer does not exist");
-		
-		Customer existingCustomer = opt.get();
+		Customer existingCustomer = customerRepository.findById(user.getUserId())
+				.orElseThrow(() -> new CustomerNotFoundException("Customer does not exist"));
 		
 		Cart customerCart = existingCustomer.getCustomerCart();
 		
@@ -218,7 +172,7 @@ public class CartServiceImpl implements CartService {
 		
 		customerCart.setCartTotal(0.0);
 		
-		return cartDao.save(customerCart);
+		return cartRepository.save(customerCart);
 	}
 	
 }
