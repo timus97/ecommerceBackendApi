@@ -85,6 +85,12 @@ public class GlobalExceptionHandler {
 		ErrorDetails err = new ErrorDetails(LocalDateTime.now(), we.getMessage(), wr.getDescription(false));
 		return new ResponseEntity<>(err, HttpStatus.BAD_REQUEST);
 	}
+
+	@ExceptionHandler(InventoryAlertException.class)
+	public ResponseEntity<ErrorDetails> inventoryAlertExceptionHandler(InventoryAlertException iae, WebRequest wr){
+		ErrorDetails err = new ErrorDetails(LocalDateTime.now(), iae.getMessage(), wr.getDescription(false));
+		return new ResponseEntity<>(err, HttpStatus.BAD_REQUEST);
+	}
 	// Custom Exception Handler Area Ends
 	
 	

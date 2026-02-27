@@ -144,6 +144,14 @@
 						</goals>
 					</execution>
 				</executions>
+				<configuration>
+					<excludes>
+						<!-- Exclude Lombok-generated model classes -->
+						<exclude>com/masai/models/**</exclude>
+						<!-- Exclude DTO classes -->
+						<exclude>com/masai/dto/**</exclude>
+					</excludes>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>

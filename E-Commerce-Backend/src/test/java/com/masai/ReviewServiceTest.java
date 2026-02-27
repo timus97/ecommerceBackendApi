@@ -117,7 +117,8 @@ class ReviewServiceTest {
         when(tokenValidationUtil.validateCustomerToken(anyString())).thenReturn(userSession);
         when(customerRepository.findById(1)).thenReturn(Optional.of(customer));
         when(productRepository.findById(1)).thenReturn(Optional.of(product));
-        when(reviewRepository.existsByCustomerAndProduct(any(), any())).thenReturn(false);
+        // Note: existsByCustomerAndProduct is not stubbed because the invalid rating
+        // check happens before that call, making this stubbing unnecessary
 
         assertThrows(ReviewException.class, () ->
             reviewService.addReview(requestDTO, "customer_testtoken"));
